@@ -3,3 +3,7 @@
 *.img
 *.iso
 dist/
+
+# local-only secrets (never push)
+LOCAL-SECRETS.md
+*.local.md

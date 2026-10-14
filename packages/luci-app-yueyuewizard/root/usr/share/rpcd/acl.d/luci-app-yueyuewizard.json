@@ -1,0 +1,11 @@
+{
+	"luci-app-yueyuewizard": {
+		"description": "月月岛科技首次开机向导",
+		"read": {
+			"uci": [ "yueyue", "system", "network", "wireless", "firewall", "dhcp" ]
+		},
+		"write": {
+			"uci": [ "yueyue", "system", "network", "wireless", "firewall", "dhcp" ]
+		}
+	}
+}

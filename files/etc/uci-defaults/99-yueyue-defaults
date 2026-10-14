@@ -1,23 +1,28 @@
 #!/bin/sh
 # 月月岛科技 — 首次开机默认配置
-# 首次启动由 luci-app-yueyuewizard 引导，本脚本只铺默认值
+# 首次登录由 luci-app-yueyuewizard 引导，本脚本只铺默认值
 
 # 主机名
 uci -q set system.@system[0].hostname='月月岛科技'
 uci -q set system.@system[0].timezone='CST-8'
 uci -q set system.@system[0].zonename='Asia/Shanghai'
 
-# LAN 网段: 192.168.21.1/24
+# LAN 网段: 192.168.21.1/24 (网段 21)
 uci -q set network.lan.ipaddr='192.168.21.1'
 uci -q set network.lan.netmask='255.255.255.0'
 
-# WiFi 默认: yueyue-opwrt / yueyuedaotech
+# WiFi 默认: yueyue-opwrt / opwrt
 uci -q set wireless.@wifi-iface[0].ssid='yueyue-opwrt'
-uci -q set wireless.@wifi-iface[0].key='yueyuedaotech'
+uci -q set wireless.@wifi-iface[0].key='opwrt'
 uci -q set wireless.@wifi-iface[0].encryption='psk2+ccmp'
 
-# 后台账号 root/root (首次引导里提示修改)
+# 后台账号 root/root (首次引导强制提示修改)
 (echo 'root'; sleep 1; echo 'root') | passwd root >/dev/null 2>&1
+
+# 向导状态标志: 首次登录进入引导
+touch /etc/config/yueyue
+uci -q set yueyue.wizard=yueyue
+uci -q set yueyue.wizard.done='0'
 
 uci commit
 exit 0

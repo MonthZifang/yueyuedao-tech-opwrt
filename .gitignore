@@ -7,3 +7,4 @@ dist/
 # local-only secrets (never push)
 LOCAL-SECRETS.md
 *.local.md
+HANDOVER.md

@@ -116,7 +116,8 @@ function calc(sys: {
 
 export default function Layout() {
   const { personalization, setPersonalization, logout } = useApp()
-  const [collapsed, setCollapsed] = useState(false)
+  // 默认左侧栏关闭，点左上角 ☰ 展开
+  const [collapsed, setCollapsed] = useState(true)
   const [navOpen, setNavOpen] = useState(false)
   const [stats, setStats] = useState<MiniStats | null>(null)
   const [fold, setFold] = useState<Record<string, boolean>>(loadFold)

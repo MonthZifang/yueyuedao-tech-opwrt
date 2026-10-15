@@ -1,0 +1,29 @@
+{
+	"yueyue-console": {
+		"description": "Grant access to the Yueyue console SPA (network/wireless/service)",
+		"read": {
+			"ubus": {
+				"iwinfo": [ "info", "devices", "scan", "assoclist", "countrylist", "freqlist", "txpowerlist" ],
+				"network": [ "status", "get_proto_handlers" ],
+				"network.device": [ "status" ],
+				"network.interface": [ "dump", "status" ],
+				"network.interface.*": [ "dump", "status" ],
+				"network.wireless": [ "status" ],
+				"service": [ "list" ],
+				"session": [ "get" ],
+				"system": [ "board", "info" ]
+			},
+			"uci": [ "dhcp", "dropbear", "firewall", "mwan3", "network", "system", "upnpd", "wireless", "yueyue" ]
+		},
+		"write": {
+			"ubus": {
+				"network": [ "reload", "add_host_route", "del_host_route" ],
+				"network.interface": [ "up", "down", "renew", "defer", "remove" ],
+				"network.interface.*": [ "up", "down", "renew", "defer", "remove" ],
+				"network.wireless": [ "up", "down", "reconf" ],
+				"service": [ "event" ]
+			},
+			"uci": [ "dhcp", "dropbear", "firewall", "mwan3", "network", "system", "upnpd", "wireless", "yueyue" ]
+		}
+	}
+}

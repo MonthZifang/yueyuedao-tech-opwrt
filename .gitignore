@@ -3,6 +3,8 @@
 *.img
 *.iso
 dist/
+ui/node_modules/
+ui/dist/
 
 # local-only secrets (never push)
 LOCAL-SECRETS.md

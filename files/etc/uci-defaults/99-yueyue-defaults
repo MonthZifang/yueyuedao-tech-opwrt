@@ -24,5 +24,20 @@ touch /etc/config/yueyue
 uci -q set yueyue.wizard=yueyue
 uci -q set yueyue.wizard.done='0'
 
+# 个性化默认值 (背景图 / 遮罩 / 主题)
+uci -q set yueyue.personalization=yueyue
+uci -q set yueyue.personalization.bg_mode='builtin'
+uci -q set yueyue.personalization.overlay='60'
+uci -q set yueyue.personalization.blur='14'
+uci -q set yueyue.personalization.radius='18'
+uci -q set yueyue.personalization.accent='#7fe7d2'
+uci -q set yueyue.personalization.theme='dark'
+
+# 流量/性能采样守护 (按 IP 流量统计 + 性能历史)
+mkdir -p /etc/yueyue
+chmod 755 /www/cgi-bin/yueyue /etc/init.d/yueyue-monitor 2>/dev/null
+/etc/init.d/yueyue-monitor enable
+/etc/init.d/yueyue-monitor start
+
 uci commit
 exit 0

@@ -1,0 +1,18 @@
+#!/bin/sh
+# 月月岛科技：全站插画背景 + 玻璃拟态
+# 将 /www/luci-static/yueyue/yueyue-bg.css 追加到各 luci 主题 cascade.css（带标记，幂等可重复执行）
+CSS=/www/luci-static/yueyue/yueyue-bg.css
+[ -s "$CSS" ] || exit 0
+
+for f in /www/luci-static/bootstrap/cascade.css \
+         /www/luci-static/bootstrap-light/cascade.css \
+         /www/luci-static/bootstrap-dark/cascade.css \
+         /www/luci-static/openwrt/cascade.css; do
+	[ -f "$f" ] || continue
+	grep -q 'yueyue-bg v1' "$f" && continue
+	printf '\n' >> "$f"
+	cat "$CSS" >> "$f"
+done
+
+rm -f /tmp/luci-indexcache* 2>/dev/null
+exit 0

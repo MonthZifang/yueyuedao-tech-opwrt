@@ -31,6 +31,9 @@ define Package/luci-app-yueyuewizard/install
 	$(INSTALL_DATA) ./luasrc/view/yueyuewizard/wizard.htm $(1)/usr/lib/lua/luci/view/yueyuewizard/
 	$(INSTALL_DIR) $(1)/usr/share/rpcd/acl.d
 	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-yueyuewizard.json $(1)/usr/share/rpcd/acl.d/
+	$(INSTALL_DIR) $(1)/www/yueyuewizard
+	$(INSTALL_DATA) ./root/www/yueyuewizard/logo.png $(1)/www/yueyuewizard/
+	$(INSTALL_DATA) ./root/www/yueyuewizard/bg.jpg $(1)/www/yueyuewizard/
 endef
 
 $(eval $(call BuildPackage,luci-app-yueyuewizard))

@@ -25,6 +25,8 @@ body{
   background:
     radial-gradient(1100px 560px at 82% -12%, rgba(127,231,210,.13), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, rgba(47,191,160,.10), transparent 60%),
+    linear-gradient(rgba(15,26,25,.55), rgba(15,26,25,.86)),
+    url('/yueyuewizard/bg.jpg') center / cover no-repeat fixed,
     var(--bg);
   color:var(--text);
   font-family:"Zen Maru Gothic","Noto Sans SC",system-ui,-apple-system,sans-serif;
@@ -39,7 +41,9 @@ body{
   overflow:hidden;
 }
 header{padding:28px 34px 18px;border-bottom:1px solid var(--border)}
-.brand{display:flex;align-items:baseline;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .blogo{width:38px;height:38px;object-fit:contain;flex:none;
+  filter:drop-shadow(0 4px 12px rgba(127,231,210,.25))}
 .brand h1{font-size:21px;font-weight:700;letter-spacing:.5px}
 .brand .en{font-size:11px;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase}
 .progress{display:flex;gap:8px;margin-top:18px}
@@ -56,11 +60,9 @@ h2{font-size:22px;font-weight:700;margin-bottom:8px}
 .sub{color:var(--muted);font-size:13.5px;line-height:1.8;margin-bottom:22px}
 .hero{text-align:center;padding:14px 0 6px}
 .hero .logo{
-  width:86px;height:86px;margin:0 auto 18px;border-radius:24px;
-  background:linear-gradient(145deg,var(--accent),var(--accent2));
-  display:flex;align-items:center;justify-content:center;
-  font-size:38px;color:#0F1A19;font-weight:700;
-  box-shadow:0 16px 44px rgba(127,231,210,.28);
+  width:148px;height:148px;margin:0 auto 18px;
+  object-fit:contain;display:block;
+  filter:drop-shadow(0 16px 44px rgba(127,231,210,.30));
 }
 .hero h2{font-size:26px}
 .badge{display:inline-block;margin-top:14px;padding:5px 14px;border-radius:99px;
@@ -128,6 +130,7 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 <div class="card">
   <header>
     <div class="brand">
+      <img class="blogo" src="/yueyuewizard/logo.png" alt="">
       <h1>月月岛科技</h1>
       <span class="en mono">YUEYUEDAO&nbsp;TECH</span>
     </div>
@@ -143,7 +146,7 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
     <!-- 0 欢迎 -->
     <section class="step active" data-step="0">
       <div class="hero">
-        <div class="logo">月</div>
+        <img class="logo" src="/yueyuewizard/logo.png" alt="月月岛科技">
         <h2>欢迎使用月月岛科技企业路由</h2>
         <p class="sub">几步简单设置，让设备接入网络。<br>整个过程大约需要 2 分钟。</p>
         <span class="badge mono" id="verbadge">FIRMWARE —</span>

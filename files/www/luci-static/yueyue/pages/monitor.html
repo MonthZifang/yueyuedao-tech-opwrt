@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>系统监控 · 月月岛科技</title>
+<style>
+:root{
+  --bg:#0F1A19; --bg2:rgba(18,34,32,.82); --panel:rgba(255,255,255,.05); --panel2:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.10); --border2:rgba(255,255,255,.18);
+  --accent:#7fe7d2; --accent2:#2fbfa0; --accent-dim:rgba(127,231,210,.16);
+  --text:#d8ede9; --muted:#7f9a95; --warn:#ff7a85; --ok:#7fe7d2; --down:#7fc4ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    linear-gradient(rgba(15,26,25,.72), rgba(15,26,25,.88)),
+    url('../assets/bg-BbiUDa6X.webp') center/cover no-repeat fixed,
+    var(--bg);
+  color:var(--text); font-family:"Noto Sans SC","Zen Maru Gothic",system-ui,-apple-system,sans-serif;
+  padding:22px; overflow-y:auto;
+}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.head img{width:36px;height:36px;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(127,231,210,.25))}
+.head h1{font-size:19px;letter-spacing:.5px}
+.badge{font-size:11px;color:var(--muted);border:1px solid var(--border2);border-radius:99px;padding:4px 12px}
+.badge.live{color:var(--ok);border-color:rgba(127,231,210,.4)}
+.badge.demo{color:var(--warn);border-color:rgba(255,122,133,.45)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px 18px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.card .k{font-size:11.5px;color:var(--muted);letter-spacing:1px;margin-bottom:8px}
+.card .v{font-size:24px;font-weight:700}
+.card .v small{font-size:12px;color:var(--muted);font-weight:400;margin-left:4px}
+.bar{height:6px;border-radius:99px;background:var(--panel2);margin-top:10px;overflow:hidden}
+.bar b{display:block;height:100%;width:0;border-radius:99px;background:var(--accent);transition:width .4s}
+.bar b.warn{background:var(--warn)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.chartwrap{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px 18px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.chartwrap h2{font-size:13px;color:var(--muted);font-weight:500;letter-spacing:1px;margin-bottom:10px}
+canvas{width:100%;height:170px;display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--muted);font-weight:500;text-align:left;font-size:11px;letter-spacing:1px;padding:8px 12px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px dashed var(--border)}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;border:1px solid var(--border2)}
+.up{color:var(--ok);border-color:rgba(127,231,210,.35)}
+.down{color:var(--warn);border-color:rgba(255,122,133,.35)}
+.footer{margin-top:14px;font-size:11px;color:var(--muted);letter-spacing:.5px}
+</style>
+</head>
+<body>
+  <div class="head">
+    <img src="../assets/logo-DE7xEWH4.png" alt="">
+    <h1>系统监控</h1>
+    <span class="badge live mono" id="status">● LIVE</span>
+    <span class="badge mono" id="clock">--:--:--</span>
+    <span class="badge mono">月月岛科技 · 企业路由</span>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">CPU 使用率</div><div class="v" id="cpuV">—<small>%</small></div>
+      <div class="bar"><b id="cpuB"></b></div></div>
+    <div class="card"><div class="k">内存使用率</div><div class="v" id="memV">—<small>%</small></div>
+      <div class="bar"><b id="memB"></b></div></div>
+    <div class="card"><div class="k">负载均值</div><div class="v mono" id="loadV">—</div>
+      <div class="k" style="margin:8px 0 0">1 / 5 / 15 分钟</div></div>
+    <div class="card"><div class="k">运行时间</div><div class="v" id="upV">—</div>
+      <div class="k" style="margin:8px 0 0" id="upSub">自上次启动</div></div>
+  </div>
+
+  <div class="cols">
+    <div class="chartwrap"><h2>CPU 历史（最近 2 分钟）</h2><canvas id="cpuC"></canvas></div>
+    <div class="chartwrap"><h2>内存历史（最近 2 分钟）</h2><canvas id="memC"></canvas></div>
+  </div>
+
+  <div class="cols" style="margin-top:14px">
+    <div class="chartwrap">
+      <h2>存储</h2>
+      <table><tbody>
+        <tr><td>根分区 <span class="mono" id="diskTxt" style="color:var(--muted)"></span></td>
+            <td style="width:45%"><div class="bar"><b id="diskB"></b></div></td></tr>
+        <tr><td>内存 <span class="mono" id="memTxt" style="color:var(--muted)"></span></td>
+            <td><div class="bar"><b id="memB2"></b></div></td></tr>
+        <tr><td>交换 <span class="mono" id="swapTxt" style="color:var(--muted)"></span></td>
+            <td><div class="bar"><b id="swapB"></b></div></td></tr>
+      </tbody></table>
+    </div>
+    <div class="chartwrap">
+      <h2>网络接口</h2>
+      <table><thead><tr><th>接口</th><th>状态</th><th>地址</th></tr></thead>
+      <tbody id="ifaces"></tbody></table>
+    </div>
+  </div>
+
+  <div class="footer mono" id="foot">数据源 /proc · 采样间隔 2s · yueyueconsole sysinfo API</div>
+
+<script>
+var API = "/cgi-bin/luci/admin/yueroute/api/sysinfo";
+var CH = { cpu: [], mem: [] }, PREV = null;
+
+function $(id){ return document.getElementById(id); }
+function gb(b){ return (b / 1073741824).toFixed(2); }
+function mb(b){ return (b / 1048576).toFixed(0); }
+function fmtUp(s){
+  s = Math.floor(s);
+  var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return (d ? d + " 天 " : "") + h + " 小时 " + m + " 分";
+}
+function setV(id, v, unit){ $(id).innerHTML = v + (unit ? '<small>' + unit + '</small>' : ''); }
+
+function drawHist(id, arr, color, fill, suffix){
+  var c = $(id), dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = 170;
+  c.width = w * dpr; c.height = h * dpr;
+  var x = c.getContext("2d"); x.scale(dpr, dpr); x.clearRect(0, 0, w, h);
+  x.strokeStyle = "rgba(255,255,255,.07)";
+  for (var g = 0; g <= 3; g++) { var y = 10 + (h - 30) * g / 3; x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); }
+  if (arr.length < 2) return;
+  x.beginPath();
+  arr.forEach(function(v, i){
+    var px = w * i / (arr.length - 1), py = 10 + (h - 30) * (1 - v / 100);
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  });
+  x.strokeStyle = color; x.lineWidth = 2; x.stroke();
+  x.lineTo(w, h - 20); x.lineTo(0, h - 20); x.closePath(); x.fillStyle = fill; x.fill();
+  x.font = "11px monospace"; x.fillStyle = color;
+  x.fillText(suffix + " 当前 " + (arr[arr.length - 1] || 0).toFixed(1) + "%", 8, h - 6);
+}
+
+function render(d){
+  // CPU
+  var cpuPct = 0;
+  if (d.cpu && PREV && PREV.cpu) {
+    var dt = d.cpu.total - PREV.cpu.total;
+    var idle = (d.cpu.idle + d.cpu.iowait) - (PREV.cpu.idle + PREV.cpu.iowait);
+    cpuPct = dt > 0 ? Math.max(0, Math.min(100, 100 * (1 - idle / dt))) : 0;
+  } else if (d._demo) { cpuPct = d._demo.cpu; }
+  CH.cpu.push(cpuPct); if (CH.cpu.length > 60) CH.cpu.shift();
+  setV("cpuV", cpuPct.toFixed(1), "%");
+  $("cpuB").style.width = cpuPct + "%"; $("cpuB").className = cpuPct > 85 ? "warn" : "";
+
+  // MEM
+  var memTotal = (d.mem && d.mem.MemTotal) || 1;
+  var memAvail = (d.mem && (d.mem.MemAvailable || d.mem.MemFree)) || 0;
+  var memPct = d._demo ? d._demo.mem : 100 * (1 - memAvail / memTotal);
+  CH.mem.push(memPct); if (CH.mem.length > 60) CH.mem.shift();
+  setV("memV", memPct.toFixed(1), "%");
+  $("memB").style.width = memPct + "%"; $("memB").className = memPct > 85 ? "warn" : "";
+
+  // load + uptime
+  if (d.load) $("loadV").innerHTML = d.load.slice(0, 3).map(function(v){ return (+v).toFixed(2); }).join(" / ");
+  if (d.uptime) { setV("upV", fmtUp(d.uptime)); }
+
+  // storage
+  if (d.disk) {
+    var dp = 100 * d.disk.used / (d.disk.used + d.disk.free || 1);
+    $("diskTxt").textContent = "(" + gb(d.disk.used * 1024) + " / " + gb((d.disk.used + d.disk.free) * 1024) + " GB)";
+    $("diskB").style.width = dp + "%"; $("diskB").className = dp > 85 ? "warn" : "";
+  }
+  if (d.mem) {
+    $("memTxt").textContent = "(" + gb(memTotal - memAvail) + " / " + gb(memTotal) + " GB)";
+    $("memB2").style.width = memPct + "%";
+    var st = d.mem.SwapTotal || 0, sf = d.mem.SwapFree || 0;
+    $("swapTxt").textContent = st ? "(" + gb(st - sf) + " / " + gb(st) + " GB)" : "(未配置)";
+    $("swapB").style.width = st ? (100 * (st - sf) / st) + "%" : "0%";
+  }
+
+  // ifaces
+  $("ifaces").innerHTML = (d.ifaces || []).map(function(it){
+    return '<tr><td class="mono">' + it.name + '</td>' +
+      '<td><span class="pill ' + (it.up ? 'up">● 在线' : 'down">○ 离线') + '</span></td>' +
+      '<td class="mono">' + (it.ipaddr || "—") + '</td></tr>';
+  }).join("");
+
+  drawHist("cpuC", CH.cpu, "#7fe7d2", "rgba(127,231,210,.10)", "CPU");
+  drawHist("memC", CH.mem, "#7fc4ff", "rgba(127,196,255,.10)", "内存");
+
+  PREV = { cpu: d.cpu };
+  if (!d._demo) {
+    $("status").textContent = "● LIVE"; $("status").className = "badge live mono";
+    $("foot").textContent = "数据源 /proc · 采样间隔 2s · 系统版本 " + (d.version || "OpenWrt");
+  }
+}
+
+function demo(){
+  $("status").textContent = "● 演示数据"; $("status").className = "badge demo mono";
+  var t = Date.now() / 1000;
+  render({
+    _demo: { cpu: 12 + Math.abs(Math.sin(t / 9)) * 22, mem: 38 + Math.sin(t / 17) * 8 },
+    mem: { MemTotal: 268435456, MemAvailable: 142606336, SwapTotal: 0, SwapFree: 0 },
+    load: [0.42, 0.38, 0.31], uptime: 81234,
+    disk: { used: 210000, free: 830000 },
+    ifaces: [
+      { name: "br-lan", up: true, ipaddr: "192.168.21.1" },
+      { name: "eth0", up: true, ipaddr: "10.0.2.15" },
+      { name: "eth1", up: false, ipaddr: "—" }
+    ],
+    version: "演示"
+  });
+}
+
+function tick(){
+  $("clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+  fetch(API, { credentials: "same-origin" })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ (d && (d.cpu || d._demo)) ? render(d) : demo(); })
+    .catch(demo);
+}
+window.addEventListener("resize", function(){ drawHist("cpuC", CH.cpu, "#7fe7d2", "rgba(127,231,210,.10)", "CPU"); drawHist("memC", CH.mem, "#7fc4ff", "rgba(127,196,255,.10)", "内存"); });
+tick();
+setInterval(tick, 2000);
+</script>
+</body>
+</html>

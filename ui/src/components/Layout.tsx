@@ -21,40 +21,40 @@ const MENU: MenuGroup[] = [
     items: [{ to: '/', label: '首页', icon: '🏠' }],
   },
   {
-    label: '流量',
+    label: '流量与监控',
     items: [
       { to: '/traffic', label: '流量统计', icon: '📊' },
       { to: '/realtime', label: '实时流量', icon: '📡' },
+      { to: '/perf', label: '性能监控', icon: '📈' },
     ],
   },
   {
     label: '网络',
     items: [
-      { to: '/routes', label: '路由可视化', icon: '🗺️' },
       { to: '/interfaces', label: '接口', icon: '🔌' },
       { to: '/wireless', label: '无线', icon: '📶' },
       { to: '/dhcp', label: 'DHCP / DNS', icon: '🧭' },
       { to: '/firewall', label: '防火墙', icon: '🛡️' },
+      { to: '/routes', label: '路由可视化', icon: '🗺️' },
+      { to: '/mwan3', label: '多拨负载均衡', icon: '🔀' },
       { to: '/diag', label: '网络诊断', icon: '🩺' },
-    ],
-  },
-  {
-    label: '系统',
-    items: [
-      { to: '/perf', label: '性能监控', icon: '📈' },
-      { to: '/settings', label: '系统设置', icon: '⚙️' },
-      { to: '/log', label: '系统日志', icon: '📜' },
-      { to: '/processes', label: '进程', icon: '🧵' },
-      { to: '/services', label: '启动项', icon: '🚀' },
-      { to: '/packages', label: '软件包', icon: '📦' },
-      { to: '/backup', label: '备份 / 升级', icon: '💾' },
     ],
   },
   {
     label: '服务',
     items: [
-      { to: '/mwan3', label: '多拨负载均衡', icon: '🔀' },
+      { to: '/services', label: '启动项', icon: '🚀' },
       { to: '/upnp', label: 'UPnP', icon: '🔗' },
+      { to: '/packages', label: '软件包', icon: '📦' },
+    ],
+  },
+  {
+    label: '系统',
+    items: [
+      { to: '/settings', label: '系统设置', icon: '⚙️' },
+      { to: '/log', label: '系统日志', icon: '📜' },
+      { to: '/processes', label: '进程', icon: '🧵' },
+      { to: '/backup', label: '备份 / 升级', icon: '💾' },
     ],
   },
   {
@@ -91,6 +91,16 @@ interface MiniStats {
   clock: string
 }
 
+/* 导航分组折叠状态（持久化） */
+const FOLD_KEY = 'yy-nav-fold'
+function loadFold(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(FOLD_KEY) || '{}')
+  } catch {
+    return {}
+  }
+}
+
 function calc(sys: {
   cpu: { user: number; nice: number; system: number; idle: number; iowait: number; irq: number; softirq: number; total: number }
   mem: Record<string, number>
@@ -109,7 +119,18 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [stats, setStats] = useState<MiniStats | null>(null)
+  const [fold, setFold] = useState<Record<string, boolean>>(loadFold)
   const loc = useLocation()
+
+  const toggleFold = (label: string) => {
+    setFold((f) => {
+      const next = { ...f, [label]: !f[label] }
+      try {
+        localStorage.setItem(FOLD_KEY, JSON.stringify(next))
+      } catch { /* ignore */ }
+      return next
+    })
+  }
 
   const refreshStats = () => {
     api.sysinfo().then((s) => setStats(calc(s))).catch(() => {})
@@ -144,23 +165,33 @@ export default function Layout() {
           </div>
         </div>
         <nav className="yy-nav">
-          {MENU.map((g, gi) => (
-            <div className="yy-nav-group" key={gi}>
-              {g.label && <div className="yy-nav-label">{g.label}</div>}
-              {g.items.map((it) => (
-                <NavLink
-                  key={it.to}
-                  to={it.to}
-                  end={it.to === '/'}
-                  className={({ isActive }) => `yy-nav-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setNavOpen(false)}
-                >
-                  <span className="icon">{it.icon}</span>
-                  {it.label}
-                </NavLink>
-              ))}
-            </div>
-          ))}
+          {MENU.map((g, gi) => {
+            const folded = !!fold[g.label]
+            return (
+              <div className={`yy-nav-group ${folded ? 'folded' : ''}`} key={gi}>
+                {g.label ? (
+                  <button type="button" className="yy-nav-label" onClick={() => toggleFold(g.label)} title="展开 / 收起">
+                    <span className="arrow">{folded ? '▸' : '▾'}</span>
+                    {g.label}
+                  </button>
+                ) : null}
+                <div className="yy-nav-items">
+                  {g.items.map((it) => (
+                    <NavLink
+                      key={it.to}
+                      to={it.to}
+                      end={it.to === '/'}
+                      className={({ isActive }) => `yy-nav-item ${isActive ? 'active' : ''}`}
+                      onClick={() => setNavOpen(false)}
+                    >
+                      <span className="icon">{it.icon}</span>
+                      {it.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </nav>
         <div className="yy-side-foot">
           <span className="btn small ghost" style={{ cursor: 'pointer' }} onClick={toggleTheme}>

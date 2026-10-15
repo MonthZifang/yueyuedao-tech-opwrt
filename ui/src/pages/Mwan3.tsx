@@ -47,7 +47,7 @@ export default function Mwan3() {
       <Card title="说明">
         <div className="muted" style={{ lineHeight: 2 }}>
           · mwan3 支持多条上联线路（多拨 / 多 WAN）负载均衡与故障切换<br />
-          · 策略与规则可在「软件包」安装 <span className="mono">luci-app-mwan3</span> 后于高级配置中调整<br />
+          · 策略与规则在「系统 → 配置文件」或 SSH 中调整 `/etc/config/mwan3`，保存后重启 mwan3 生效<br />
           · 修改接口配置后建议重启 mwan3 服务（启动项页面可操作）
         </div>
       </Card>

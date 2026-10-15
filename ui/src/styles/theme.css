@@ -93,7 +93,6 @@ body {
   background-image: var(--yy-bg-image);
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
 }
 .yy-bg::after {
   content: '';
@@ -153,12 +152,33 @@ body {
 .yy-nav { flex: 1; padding: 2px 12px 16px; }
 .yy-nav-group { margin-top: 12px; }
 .yy-nav-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: inherit;
   font-size: 10.5px;
   color: var(--text-2);
   letter-spacing: 2.5px;
   padding: 8px 12px 6px;
   text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--dur) var(--ease);
 }
+.yy-nav-label:hover { color: var(--text-0); }
+.yy-nav-label .arrow {
+  font-size: 9px;
+  width: 10px;
+  transition: transform var(--dur) var(--ease);
+}
+.yy-nav-items {
+  overflow: hidden;
+  transition: opacity var(--dur) var(--ease);
+}
+.yy-nav-group.folded .yy-nav-items { display: none; }
 .yy-nav-item {
   position: relative;
   display: flex;

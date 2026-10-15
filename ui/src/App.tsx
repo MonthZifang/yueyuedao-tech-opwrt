@@ -1,30 +1,32 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import { HashRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { ToastProvider } from './components/ui'
+import { ToastProvider, Loading } from './components/ui'
 import { api } from './lib/api'
 import { isAuthed, logout as doLogout, getSid } from './lib/ubus'
 import type { Personalization } from './lib/types'
 import Layout from './components/Layout'
 import Login from './pages/Login'
-import Wizard from './pages/Wizard'
-import Dashboard from './pages/Dashboard'
-import TrafficStats from './pages/TrafficStats'
-import RealtimeTraffic from './pages/RealtimeTraffic'
-import PerfHistory from './pages/PerfHistory'
-import RouteViz from './pages/RouteViz'
-import Interfaces from './pages/Interfaces'
-import Wireless from './pages/Wireless'
-import DhcpDns from './pages/DhcpDns'
-import Firewall from './pages/Firewall'
-import Diagnostics from './pages/Diagnostics'
-import Settings from './pages/Settings'
-import LogView from './pages/LogView'
-import Processes from './pages/Processes'
-import Services from './pages/Services'
-import Packages from './pages/Packages'
-import Backup from './pages/Backup'
-import Mwan3 from './pages/Mwan3'
-import Upnp from './pages/Upnp'
+
+/* 路由级代码分割：首屏只加载登录/框架，页面按需加载 */
+const Wizard = lazy(() => import('./pages/Wizard'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const TrafficStats = lazy(() => import('./pages/TrafficStats'))
+const RealtimeTraffic = lazy(() => import('./pages/RealtimeTraffic'))
+const PerfHistory = lazy(() => import('./pages/PerfHistory'))
+const RouteViz = lazy(() => import('./pages/RouteViz'))
+const Interfaces = lazy(() => import('./pages/Interfaces'))
+const Wireless = lazy(() => import('./pages/Wireless'))
+const DhcpDns = lazy(() => import('./pages/DhcpDns'))
+const Firewall = lazy(() => import('./pages/Firewall'))
+const Diagnostics = lazy(() => import('./pages/Diagnostics'))
+const Settings = lazy(() => import('./pages/Settings'))
+const LogView = lazy(() => import('./pages/LogView'))
+const Processes = lazy(() => import('./pages/Processes'))
+const Services = lazy(() => import('./pages/Services'))
+const Packages = lazy(() => import('./pages/Packages'))
+const Backup = lazy(() => import('./pages/Backup'))
+const Mwan3 = lazy(() => import('./pages/Mwan3'))
+const Upnp = lazy(() => import('./pages/Upnp'))
 
 /* ---------- 会话 & 个性化上下文 ---------- */
 interface Ctx {
@@ -115,26 +117,26 @@ function Shell() {
     <AppCtx.Provider value={{ authed, setAuthed, logout, personalization: pers, setPersonalization }}>
       <div className="yy-bg" />
       <Routes>
-        <Route path="/wizard" element={<Wizard />} />
+        <Route path="/wizard" element={<Suspense fallback={<Loading />}><Wizard /></Suspense>} />
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/traffic" element={<TrafficStats />} />
-          <Route path="/realtime" element={<RealtimeTraffic />} />
-          <Route path="/perf" element={<PerfHistory />} />
-          <Route path="/routes" element={<RouteViz />} />
-          <Route path="/interfaces" element={<Interfaces />} />
-          <Route path="/wireless" element={<Wireless />} />
-          <Route path="/dhcp" element={<DhcpDns />} />
-          <Route path="/firewall" element={<Firewall />} />
-          <Route path="/diag" element={<Diagnostics />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/log" element={<LogView />} />
-          <Route path="/processes" element={<Processes />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/packages" element={<Packages />} />
-          <Route path="/backup" element={<Backup />} />
-          <Route path="/mwan3" element={<Mwan3 />} />
-          <Route path="/upnp" element={<Upnp />} />
+          <Route path="/" element={<Suspense fallback={<Loading />}><Dashboard /></Suspense>} />
+          <Route path="/traffic" element={<Suspense fallback={<Loading />}><TrafficStats /></Suspense>} />
+          <Route path="/realtime" element={<Suspense fallback={<Loading />}><RealtimeTraffic /></Suspense>} />
+          <Route path="/perf" element={<Suspense fallback={<Loading />}><PerfHistory /></Suspense>} />
+          <Route path="/routes" element={<Suspense fallback={<Loading />}><RouteViz /></Suspense>} />
+          <Route path="/interfaces" element={<Suspense fallback={<Loading />}><Interfaces /></Suspense>} />
+          <Route path="/wireless" element={<Suspense fallback={<Loading />}><Wireless /></Suspense>} />
+          <Route path="/dhcp" element={<Suspense fallback={<Loading />}><DhcpDns /></Suspense>} />
+          <Route path="/firewall" element={<Suspense fallback={<Loading />}><Firewall /></Suspense>} />
+          <Route path="/diag" element={<Suspense fallback={<Loading />}><Diagnostics /></Suspense>} />
+          <Route path="/settings" element={<Suspense fallback={<Loading />}><Settings /></Suspense>} />
+          <Route path="/log" element={<Suspense fallback={<Loading />}><LogView /></Suspense>} />
+          <Route path="/processes" element={<Suspense fallback={<Loading />}><Processes /></Suspense>} />
+          <Route path="/services" element={<Suspense fallback={<Loading />}><Services /></Suspense>} />
+          <Route path="/packages" element={<Suspense fallback={<Loading />}><Packages /></Suspense>} />
+          <Route path="/backup" element={<Suspense fallback={<Loading />}><Backup /></Suspense>} />
+          <Route path="/mwan3" element={<Suspense fallback={<Loading />}><Mwan3 /></Suspense>} />
+          <Route path="/upnp" element={<Suspense fallback={<Loading />}><Upnp /></Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

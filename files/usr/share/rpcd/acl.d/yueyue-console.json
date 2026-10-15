@@ -1,9 +1,11 @@
 {
 	"yueyue-console": {
-		"description": "Grant access to the Yueyue console SPA (network/wireless/service)",
+		"description": "Grant access to the Yueyue console SPA (network/wireless/service/dhcp)",
 		"read": {
 			"ubus": {
+				"dhcp": [ "leases" ],
 				"iwinfo": [ "info", "devices", "scan", "assoclist", "countrylist", "freqlist", "txpowerlist" ],
+				"mwan3": [ "status" ],
 				"network": [ "status", "get_proto_handlers" ],
 				"network.device": [ "status" ],
 				"network.interface": [ "dump", "status" ],
@@ -17,6 +19,7 @@
 		},
 		"write": {
 			"ubus": {
+				"dhcp": [ "add_lease", "delete_lease" ],
 				"network": [ "reload", "add_host_route", "del_host_route" ],
 				"network.interface": [ "up", "down", "renew", "defer", "remove" ],
 				"network.interface.*": [ "up", "down", "renew", "defer", "remove" ],

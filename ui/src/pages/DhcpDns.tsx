@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Card, Badge, Loading, useToast, Empty, Field, Modal, useAsync } from '../components/ui'
 import { ubusCall } from '../lib/ubus'
+import { api } from '../lib/api'
 
 interface Lease {
   mac: string
@@ -20,9 +21,15 @@ export default function DhcpDns() {
 
   const load = async () => {
     setLoading(true)
+    // 两段独立容错：租约接口失败不拖垮 DNS 配置加载
     try {
-      const d = await ubusCall<any>('dhcp', 'leases', {})
+      const d = await api.dhcpLeases()
       setLeases(d.leases || [])
+    } catch (e: any) {
+      setLeases([])
+      toast(e?.message || '获取租约失败', 'err')
+    }
+    try {
       const cfg = await ubusCall<any>('uci', 'get', { config: 'dhcp' })
       const hit = Object.entries(cfg?.values || {}).find(([, v]: any) => v['.type'] === 'dnsmasq')
       if (hit) {
@@ -31,7 +38,7 @@ export default function DhcpDns() {
         setDns((Array.isArray(server) ? server.join(' ') : server) || '')
       }
     } catch (e: any) {
-      toast(e?.message || '获取失败', 'err')
+      toast(e?.message || '获取 DNS 配置失败', 'err')
     } finally {
       setLoading(false)
     }

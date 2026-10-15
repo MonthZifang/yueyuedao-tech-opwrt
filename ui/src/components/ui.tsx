@@ -262,8 +262,20 @@ export function useInterval(fn: () => void, ms: number | null) {
   saved.current = fn
   useEffect(() => {
     if (ms === null) return
-    const t = setInterval(() => saved.current(), ms)
-    return () => clearInterval(t)
+    // 后台标签页暂停轮询，回到前台立即补一拍
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      saved.current()
+    }
+    const t = setInterval(tick, ms)
+    const onVis = () => {
+      if (typeof document !== 'undefined' && !document.hidden) saved.current()
+    }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis)
+    return () => {
+      clearInterval(t)
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis)
+    }
   }, [ms])
 }
 

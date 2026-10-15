@@ -85,6 +85,7 @@ export const api = {
 
   // 诊断 / 日志 / 进程 / 服务
   diag: (type: string, target: string) => call<{ output: string }>('diag', { params: { type, target } }),
+  dhcpLeases: () => call<{ leases: { mac: string; ip: string; hostname: string; expires: number }[] }>('dhcp_leases'),
   log: (lines = 200, filter?: string) => call<{ output: string }>('log', { params: { lines, filter } }),
   processes: () => call<{ processes: ProcessRow[] }>('processes'),
   services: () => call<{ services: ServiceRow[] }>('services', { params: { op: 'list' } }),

@@ -898,6 +898,34 @@ function act.log()
 	reply({ ok = true, output = exec(cmd) })
 end
 
+------------------------------------------------------------
+-- 动作: DHCP 租约（读 /tmp/dhcp.leases，兼容无 ubus leases 方法的 dnsmasq）
+------------------------------------------------------------
+
+function act.dhcp_leases()
+	local rows = {}
+	local now = os.time()
+	local f = io.open("/tmp/dhcp.leases", "r")
+	if f then
+		for line in f:lines() do
+			-- 格式: 到期时间戳 MAC IP 主机名 客户端ID
+			local exp, mac, ip, host = line:match("^(%S+)%s+(%S+)%s+(%S+)%s+(%S+)")
+			if ip then
+				local e = tonumber(exp) or 0
+				local remain = e - now
+				if e == 0 then remain = 0 end  -- 0 = 永久
+				rows[#rows + 1] = {
+					mac = mac, ip = ip,
+					hostname = (host and host ~= "*") and host or "",
+					expires = remain > 0 and remain or 0,
+				}
+			end
+		end
+		f:close()
+	end
+	reply({ ok = true, leases = rows })
+end
+
 function act.processes()
 	local rows = {}
 	for line in exec("top -bn1"):gmatch("[^\n]+") do

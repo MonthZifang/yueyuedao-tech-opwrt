@@ -15,19 +15,19 @@
 | 2026-10-15 | 前端全面重构：React+TS+Vite 替换原版 LuCI 前端 | [tasks/2026-10-15-06-React全站重构.md] |
 | 2026-10-15 | 前端设计系统 v2：继续设计与全站视觉重构 | [tasks/2026-10-15-07-前端设计系统v2.md] |
 | 2026-10-15 | 全站可用性修复（按钮失灵/502/401/404）+ GitHub 同步 | [tasks/2026-10-15-08-全站可用性修复.md] |
+| 2026-10-16 | 登录页左右分栏重构 + 全仓文档对齐最新代码 | [tasks/2026-10-16-01-登录页重构与文档对齐.md] |
+
+> ⚠️ **版本纪律：只要最新的代码。** 所有副本（桌面镜像/文档/交付物）必须对齐最新提交，交付物必须由最新代码构建，旧副本不作为交付依据。
 
 ## 当前交付物
 
-- `openwrt-25.12.5-x86-64-generic-squashfs-combined.img.gz` — 可直接刷写（Legacy BIOS）
-- `openwrt-25.12.5-x86-64-generic-squashfs-combined-efi.img.gz` — 可直接刷写（UEFI）✅推荐
-- `openwrt-25.12.5-x86-64-generic-ext4-combined(-efi).img.gz` — ext4 可写版
-- 校验文件 `sha256sums` / 包清单 `*.manifest`
+- **v2.1.0 镜像（完整前端重构版本，由最新代码构建）**：`F:\linux\firmware-2.1.0\`
+  - `openwrt-25.12.5-x86-64-generic-squashfs-combined(-efi).img.gz` — 可直接刷写（efi 版 ✅推荐）
+  - `openwrt-25.12.5-x86-64-generic-ext4-combined(-efi).img.gz` — ext4 可写版
+  - 校验文件 `sha256sums` / 包清单 `*.manifest`
+- ~~`F:\linux\firmware-1.0.0\`~~ — v1.0.0 旧构建（React 重构之前），仅存档，不作交付
 
-镜像已传至服务器 `F:\linux\firmware-1.0.0\`。
-
-> ⚠️ v2.1.0 控制台（React 全站重构 + 设计系统 v2）已在 QEMU 验收，正式镜像待重打（见任务 06/07 待办）。
-
-## 固件默认配置（v1.0.0）
+## 固件默认配置（v2.1.0）
 
 | 项 | 值 |
 |---|---|
@@ -36,4 +36,5 @@
 | LAN | 192.168.21.1/24 |
 | WiFi | yueyue-opwrt / opwrt |
 | 后台 | root / root |
-| 预装 | mwan3 多拨、luci-ssl、wireguard、首次登录向导 |
+| 预装 | mwan3 多拨、wireguard、首次登录向导（React 控制台 /wizard） |
+| 前端 | React 控制台 v2.1.0：登录页左插画/右登录分栏、玻璃拟态、全站插画背景 |

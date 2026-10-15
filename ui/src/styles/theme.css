@@ -654,20 +654,119 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
 }
 
 /* ============================================================
-   登录页
+   登录页 —— 左插画展示 / 右登录面板
    ============================================================ */
 .login-wrap {
   position: relative;
   z-index: 1;
   height: 100vh;
   display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+/* 左：插画展示区 */
+.login-visual {
+  position: relative;
+  flex: 1 1 58%;
+  min-width: 0;
+  overflow: hidden;
+}
+.login-visual-img {
+  position: absolute;
+  inset: 0;
+  background-image: var(--yy-bg-image);
+  background-size: cover;
+  background-position: center;
+  animation: login-kenburns 26s var(--ease) infinite alternate;
+}
+@keyframes login-kenburns {
+  from { transform: scale(1); }
+  to { transform: scale(1.07); }
+}
+.login-visual-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 16, 15, 0) 52%, rgba(8, 16, 15, 0.62) 100%),
+    linear-gradient(90deg, rgba(8, 16, 15, 0.16) 0%, rgba(8, 16, 15, 0) 34%);
+}
+.login-visual-brand {
+  position: absolute;
+  left: 48px;
+  right: 48px;
+  bottom: 44px;
+  color: #f2fbf8;
+  animation: login-rise 0.6s var(--ease) both;
+}
+@keyframes login-rise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.login-visual-brand .vb-title {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 6px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+.login-visual-brand .vb-sub {
+  margin-top: 8px;
+  font-size: 12px;
+  letter-spacing: 4px;
+  opacity: 0.82;
+}
+.login-visual-brand .vb-chips {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vb-chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #eaf7f3;
+  background: rgba(13, 26, 24, 0.42);
+  border: 1px solid rgba(127, 231, 210, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 右：登录面板 */
+.login-side {
+  flex: 0 0 460px;
+  display: flex;
   align-items: center;
   justify-content: center;
+  padding: 32px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--bg-0) 72%, transparent);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border-left: 1px solid var(--glass-border);
+  animation: login-rise 0.6s var(--ease) both;
 }
 .login-card {
-  width: min(400px, 90vw);
+  width: 100%;
+  max-width: 380px;
   padding: 40px 36px 30px;
   text-align: center;
+}
+
+/* 窄屏：插画收成顶部横幅 */
+@media (max-width: 900px) {
+  .login-wrap { flex-direction: column; }
+  .login-visual { flex: 0 0 32vh; }
+  .login-side {
+    flex: 1 1 auto;
+    border-left: none;
+    border-top: 1px solid var(--glass-border);
+  }
+  .login-visual-brand { left: 24px; right: 24px; bottom: 18px; }
+  .login-visual-brand .vb-title { font-size: 22px; letter-spacing: 4px; }
+  .login-visual-brand .vb-sub { font-size: 10px; letter-spacing: 2.5px; }
+  .login-visual-brand .vb-chips { margin-top: 10px; }
 }
 .login-card img.logo {
   width: 82px;

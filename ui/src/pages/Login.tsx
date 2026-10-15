@@ -39,56 +39,75 @@ export default function Login({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="login-wrap">
-      <form className="card login-card" onSubmit={submit}>
-        <img className="logo" src="/luci-static/yueyue/assets/logo.png" alt="logo" />
-        <h1>月月岛科技</h1>
-        <div className="sub">YUEYUEDAO TECH · 企业路由控制台</div>
+      {/* 左：插画展示区 */}
+      <aside className="login-visual" aria-hidden="true">
+        <div className="login-visual-img" />
+        <div className="login-visual-shade" />
+        <div className="login-visual-brand">
+          <div className="vb-title">月月岛科技</div>
+          <div className="vb-sub">YUEYUEDAO TECH · ENTERPRISE ROUTER CONSOLE</div>
+          <div className="vb-chips">
+            <span className="vb-chip">多拨 mwan3</span>
+            <span className="vb-chip">WISP 上联</span>
+            <span className="vb-chip">Mesh 组网</span>
+            <span className="vb-chip">多网段隔离</span>
+          </div>
+        </div>
+      </aside>
 
-        <label className="field">
-          <span className="lab">用户名</span>
-          <input
-            className="input"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="root"
-            autoComplete="username"
-          />
-        </label>
-        <label className="field">
-          <span className="lab">密码</span>
-          <div style={{ position: 'relative' }}>
+      {/* 右：登录面板 */}
+      <main className="login-side">
+        <form className="card login-card" onSubmit={submit}>
+          <img className="logo" src="/luci-static/yueyue/assets/logo.png" alt="logo" />
+          <h1>欢迎回来</h1>
+          <div className="sub">月月岛科技 · 企业路由控制台</div>
+
+          <label className="field">
+            <span className="lab">用户名</span>
             <input
               className="input"
-              type={showPw ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="请输入管理密码"
-              autoComplete="current-password"
-              autoFocus
-              style={{ paddingRight: 46 }}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="root"
+              autoComplete="username"
             />
-            <span
-              onClick={() => setShowPw((v) => !v)}
-              style={{
-                position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)',
-                cursor: 'pointer', fontSize: 14, opacity: 0.65, userSelect: 'none',
-              }}
-              title={showPw ? '隐藏密码' : '显示密码'}
-            >
-              {showPw ? '🙈' : '👁️'}
-            </span>
-          </div>
-        </label>
-        <button className="btn primary" style={{ width: '100%', padding: '11px 16px' }} disabled={busy}>
-          {busy ? '登录中…' : '登 录'}
-        </button>
+          </label>
+          <label className="field">
+            <span className="lab">密码</span>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input"
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="请输入管理密码"
+                autoComplete="current-password"
+                autoFocus
+                style={{ paddingRight: 46 }}
+              />
+              <span
+                onClick={() => setShowPw((v) => !v)}
+                style={{
+                  position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)',
+                  cursor: 'pointer', fontSize: 14, opacity: 0.65, userSelect: 'none',
+                }}
+                title={showPw ? '隐藏密码' : '显示密码'}
+              >
+                {showPw ? '🙈' : '👁️'}
+              </span>
+            </div>
+          </label>
+          <button className="btn primary" style={{ width: '100%', padding: '11px 16px' }} disabled={busy}>
+            {busy ? '登录中…' : '登 录'}
+          </button>
 
-        <div className="foot">
-          <span>{info?.hostname ?? '月月岛科技'}</span>
-          <span>·</span>
-          <span className="mono">{info?.version ?? 'OpenWrt'}</span>
-        </div>
-      </form>
+          <div className="foot">
+            <span>{info?.hostname ?? '月月岛科技'}</span>
+            <span>·</span>
+            <span className="mono">{info?.version ?? 'OpenWrt'}</span>
+          </div>
+        </form>
+      </main>
     </div>
   )
 }

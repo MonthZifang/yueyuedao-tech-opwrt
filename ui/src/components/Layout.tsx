@@ -35,7 +35,7 @@ const MENU: MenuGroup[] = [
       { to: '/wireless', label: '无线', icon: '📶' },
       { to: '/dhcp', label: 'DHCP / DNS', icon: '🧭' },
       { to: '/firewall', label: '防火墙', icon: '🛡️' },
-      { to: '/routes', label: '路由可视化', icon: '🗺️' },
+      { to: '/routes', label: '路由工作流', icon: '🗺️' },
       { to: '/mwan3', label: '多拨负载均衡', icon: '🔀' },
       { to: '/diag', label: '网络诊断', icon: '🩺' },
     ],
@@ -68,7 +68,7 @@ const TITLES: Record<string, string> = {
   '/traffic': '流量统计',
   '/realtime': '实时流量',
   '/perf': '性能监控',
-  '/routes': '路由可视化',
+  '/routes': '路由工作流',
   '/interfaces': '网络接口',
   '/wireless': '无线网络',
   '/dhcp': 'DHCP / DNS',
@@ -121,11 +121,60 @@ export default function Layout() {
   const [navOpen, setNavOpen] = useState(false)
   const [stats, setStats] = useState<MiniStats | null>(null)
   const [fold, setFold] = useState<Record<string, boolean>>(loadFold)
+  const [q, setQ] = useState('')
   const loc = useLocation()
 
   const toggleFold = (label: string) => {
     setFold((f) => {
       const next = { ...f, [label]: !f[label] }
+      try {
+        localStorage.setItem(FOLD_KEY, JSON.stringify(next))
+      } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  /* 导航搜索过滤 */
+  const kw = q.trim().toLowerCase()
+  const filteredMenu = MENU.map((g) => ({
+    ...g,
+    items: g.items.filter((it) => !kw || it.label.toLowerCase().includes(kw) || it.to.includes(kw)),
+  })).filter((g) => g.items.length > 0)
+
+  /* 当前页面所属分组（面包屑 + 自动展开） */
+  const curGroup = MENU.find((g) => g.items.some((i) => i.to === loc.pathname))?.label || ''
+  useEffect(() => {
+    if (curGroup && fold[curGroup]) {
+      setFold((f) => {
+        const next = { ...f, [curGroup]: false }
+        try {
+          localStorage.setItem(FOLD_KEY, JSON.stringify(next))
+        } catch { /* ignore */ }
+        return next
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loc.pathname])
+
+  /* Ctrl+B 切换侧边栏 */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        setCollapsed((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const allFolded = MENU.filter((g) => g.label).every((g) => fold[g.label])
+  const toggleFoldAll = () => {
+    setFold((f) => {
+      const next: Record<string, boolean> = {}
+      MENU.filter((g) => g.label).forEach((g) => {
+        next[g.label] = !allFolded
+      })
       try {
         localStorage.setItem(FOLD_KEY, JSON.stringify(next))
       } catch { /* ignore */ }
@@ -166,8 +215,25 @@ export default function Layout() {
           </div>
         </div>
         <nav className="yy-nav">
-          {MENU.map((g, gi) => {
-            const folded = !!fold[g.label]
+          <div className="yy-nav-search">
+            <span className="ico">🔎</span>
+            <input
+              className="nav-q"
+              placeholder="搜索菜单… (Ctrl+B 收起侧栏)"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {q ? (
+              <button className="q-clear" onClick={() => setQ('')} title="清除">✕</button>
+            ) : (
+              <button className="q-clear" onClick={toggleFoldAll} title={allFolded ? '全部展开' : '全部折叠'}>
+                {allFolded ? '⤒' : '⤓'}
+              </button>
+            )}
+          </div>
+          {filteredMenu.length === 0 && <div className="yy-nav-empty muted small">没有匹配的菜单</div>}
+          {filteredMenu.map((g, gi) => {
+            const folded = !!fold[g.label] && !kw
             return (
               <div className={`yy-nav-group ${folded ? 'folded' : ''}`} key={gi}>
                 {g.label ? (
@@ -204,10 +270,12 @@ export default function Layout() {
 
       <div className="yy-main">
         <header className="yy-top">
-          <span className="btn small ghost" onClick={toggleNav}>☰</span>
+          <span className="btn small ghost" onClick={toggleNav} title="展开 / 收起侧边栏 (Ctrl+B)">☰</span>
           <div>
             <div className="title">{TITLES[loc.pathname] || '月月岛控制台'}</div>
-            <div className="crumb">月月岛科技企业路由 · 控制台</div>
+            <div className="crumb">
+              月月岛科技企业路由 · 控制台{curGroup ? ` / ${curGroup}` : ''} / {TITLES[loc.pathname] || '首页'}
+            </div>
           </div>
           <span className="spacer" />
           {stats && (

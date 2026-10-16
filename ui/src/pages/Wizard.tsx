@@ -15,6 +15,9 @@ export default function Wizard() {
   const [aps, setAps] = useState<WifiAp[]>([])
   const [scanning, setScanning] = useState(false)
 
+  // 网络角色
+  const [isMain, setIsMain] = useState(true)
+
   // 上联
   const [uplinkMode, setUplinkMode] = useState<'wired' | 'wisp'>('wired')
   const [selAp, setSelAp] = useState<WifiAp | null>(null)
@@ -31,7 +34,10 @@ export default function Wizard() {
   const [pw2, setPw2] = useState('')
 
   useEffect(() => {
-    api.wizardStatus().then(setStatus).catch(() => {})
+    api.wizardStatus().then((s) => {
+      setStatus(s)
+      if (s.main_router === false) setIsMain(false)
+    }).catch(() => {})
   }, [])
 
   const doScan = async () => {
@@ -77,7 +83,7 @@ export default function Wizard() {
   const applyMode = async (): Promise<boolean> => {
     setBusy(true)
     try {
-      await api.wizardMode({ mode: netMode, mesh_id: meshId, mesh_key: meshKey, count: vlanCount })
+      await api.wizardMode({ mode: netMode, mesh_id: meshId, mesh_key: meshKey, count: vlanCount, main_router: isMain ? '1' : '0' })
       toast('组网方式已应用', 'ok')
       return true
     } catch (e: any) {
@@ -161,7 +167,7 @@ export default function Wizard() {
               <h2>欢迎使用 月月岛科技企业路由 </h2>
               <p className="muted">
                 本向导将帮助你完成初始配置：<br />
-                1⃣ 检测并连接上联网络（网线 或 无线中继 WISP）<br />
+                1⃣ 确认网络角色（主路由 / 二级路由）并连接上联网络（网线 或 无线中继 WISP）<br />
                 2⃣ 选择组网方式（标准 / Mesh 组网 / 多网段隔离）<br />
                 3⃣ 设置管理密码，保障设备安全<br />
                 随时可以点击右上角“跳过向导”直接进入控制台。
@@ -187,7 +193,31 @@ export default function Wizard() {
 
           {step === 1 && (
             <div>
-              <h3>连接上联网络</h3>
+              <h3>是否为主路由</h3>
+              <div className="grid c2">
+                <div
+                  className={`card choice-card ${isMain ? 'selected' : ''}`}
+                  onClick={() => setIsMain(true)}
+                >
+                  <div className="cc-title">
+                    是，主路由
+                    {isMain && <span className="cc-check">✓</span>}
+                  </div>
+                  <div className="cc-desc">本机是网络唯一出口：负责拨号 / NAT / DHCP 地址分配，内网设备以本机为默认网关。</div>
+                </div>
+                <div
+                  className={`card choice-card ${!isMain ? 'selected' : ''}`}
+                  onClick={() => setIsMain(false)}
+                >
+                  <div className="cc-title">
+                    否，二级路由
+                    {!isMain && <span className="cc-check">✓</span>}
+                  </div>
+                  <div className="cc-desc">上级已有主路由：本机关闭 DHCP 地址分配（由上级下发地址），仅作二级路由 / 接入扩展，管理地址保持不变。</div>
+                </div>
+              </div>
+
+              <h3 className="mt24">连接上联网络</h3>
               <div className="grid c2">
                 <div
                   className={`card choice-card ${uplinkMode === 'wired' ? 'selected' : ''}`}
@@ -325,6 +355,7 @@ export default function Wizard() {
           {step === 4 && (
             <div className="wz-summary">
               <h3>配置摘要</h3>
+              <div className="kv"><span className="k">网络角色</span><span>{isMain ? '主路由（NAT / DHCP）' : '二级路由（关闭本机 DHCP）'}</span></div>
               <div className="kv"><span className="k">上联方式</span><span>{uplinkMode === 'wired' ? '网线 DHCP' : `WISP 中继 ${selAp?.ssid || ''}`}</span></div>
               <div className="kv"><span className="k">组网方式</span><span>{netMode === 'simple' ? '标准路由' : netMode === 'mesh' ? `Mesh（${meshId}）` : `多网段隔离（${vlanCount} 段）`}</span></div>
               <div className="kv"><span className="k">管理密码</span><span>{pw1 ? '已修改' : '保持默认'}</span></div>

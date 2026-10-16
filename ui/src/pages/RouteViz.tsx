@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Empty, Field, Loading, Modal, Switch, useAsync, useToast } from '../components/ui'
+import { Badge, Card, Empty, Field, Loading, Modal, Switch, useAsync, useInterval, useToast } from '../components/ui'
 import { api } from '../lib/api'
-import type { IfaceInfo, RouteItem } from '../lib/types'
+import { fmtBytes, fmtRate, fmtUptime } from '../lib/format'
+import type { IfaceInfo, RouteItem, Sysinfo } from '../lib/types'
 
 /* ============================================================
    路由工作流（可视化路由配置 v3.1 · 渲染性能优化版）
@@ -32,6 +33,7 @@ interface SimDevice {
   ip: string
   mac: string
   iface: string
+  expTs: number
 }
 
 interface EdgeInfo {
@@ -108,6 +110,91 @@ const isLoopback = (f: IfaceInfo) => f.device === 'lo' || f.name === 'lo' || f.n
 
 type DragHandler = (e: React.MouseEvent, key: string) => void
 type CtxHandler = (e: React.MouseEvent, kind: NodeKind | 'canvas', id?: string) => void
+
+/* ============================================================
+   属性面板基础组件 + 网卡速率测算
+   ============================================================ */
+function PKV({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div className="prop-row">
+      <span className="pk">{k}</span>
+      <span className="pv">{v}</span>
+    </div>
+  )
+}
+
+function PSec({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="prop-sec">
+      <h4>{title}</h4>
+      {children}
+    </div>
+  )
+}
+
+function PLink({ name, detail }: { name: string; detail: string }) {
+  return (
+    <div className="prop-node">
+      <i />
+      <div>
+        <div className="pn-name">{name}</div>
+        <div className="pn-detail">{detail}</div>
+      </div>
+    </div>
+  )
+}
+
+/* 子网掩码兼容两种形态：前缀（24）/ 点分（255.255.255.0） */
+function maskToOctets(mask?: string | null): number[] | null {
+  if (!mask) return null
+  const s = String(mask)
+  if (/^\d{1,2}$/.test(s)) {
+    const p = Math.max(0, Math.min(32, parseInt(s, 10)))
+    return [0, 1, 2, 3].map((i) => {
+      const bits = Math.max(0, Math.min(8, p - i * 8))
+      return 256 - Math.pow(2, 8 - bits)
+    })
+  }
+  const parts = s.split('.').map(Number)
+  return parts.length === 4 && parts.every((n) => !isNaN(n)) ? parts : null
+}
+
+function maskText(mask?: string | null): string {
+  const oct = maskToOctets(mask)
+  if (!oct) return mask || '—'
+  const bitCount = (n: number) => {
+    let c = 0
+    let v = n
+    while (v > 0) {
+      c += v & 1
+      v >>= 1
+    }
+    return c
+  }
+  const prefix = oct.reduce((a, b) => a + bitCount(b), 0)
+  return `${oct.join('.')}（/${prefix}）`
+}
+
+/* 网卡速率：相邻两次 sysinfo 采样求差分 */
+function useNetRates(data: Sysinfo | null | undefined) {
+  const prev = useRef<{ t: number; net: Record<string, { rx: number; tx: number }> } | null>(null)
+  const [rates, setRates] = useState<Record<string, { rx: number; tx: number }>>({})
+  useEffect(() => {
+    if (!data?.net) return
+    const t = Date.now()
+    const p = prev.current
+    prev.current = { t, net: data.net }
+    if (!p || t <= p.t) return
+    const dt = (t - p.t) / 1000
+    const out: Record<string, { rx: number; tx: number }> = {}
+    for (const [k, v] of Object.entries(data.net)) {
+      const q = p.net[k]
+      out[k] = { rx: q ? Math.max(0, (v.rx - q.rx) / dt) : 0, tx: q ? Math.max(0, (v.tx - q.tx) / dt) : 0 }
+    }
+    setRates(out)
+  }, [data])
+  return rates
+}
 
 /* ============================================================
    memo 化节点视图：拖拽 / 平移时只有位置变化的节点重渲染
@@ -256,6 +343,8 @@ const EdgeLayer = React.memo(function EdgeLayer({ edges, sel, flow, rewire, onEd
 export default function RouteViz() {
   const topo = useAsync(() => api.topology(), [])
   const sys = useAsync(() => api.sysinfo(), [])
+  const leases = useAsync(() => api.dhcpLeases(), [])
+  const traffic = useAsync(() => api.traffic(), [])
   const toast = useToast()
   const navigate = useNavigate()
   const [edit, setEdit] = useState<Partial<RouteItem> | null>(null)
@@ -295,6 +384,18 @@ export default function RouteViz() {
   const staticRoutes = useMemo(() => routes.filter((r) => r.source === 'static'), [routes])
   const runtimeRoutes = useMemo(() => routes.filter((r) => r.source === 'runtime'), [routes])
   const pending = !!topo.data?.pending
+
+  /* ---------- 属性面板数据（设备租约 / 流量 / 网卡速率） ---------- */
+  useInterval(() => sys.reload(), 10000)
+  useInterval(() => {
+    leases.reload()
+    traffic.reload()
+  }, 60000)
+  const rates = useNetRates(sys.data)
+  const ifaceByName = useMemo(() => new Map(nodes.map((f) => [f.name, f])), [nodes])
+  const leaseList = leases.data?.leases || []
+  const trafficIps = traffic.data?.ips || []
+  const hostsMap = traffic.data?.hosts || {}
 
   /* ---------- 布局 ---------- */
   const autoPos = useMemo(() => {
@@ -612,6 +713,7 @@ export default function RouteViz() {
         ip: `192.168.21.${10 + i}`,
         mac: randMac(),
         iface: lanIf?.name ?? 'lan',
+        expTs: Math.floor(Date.now() / 1000) + (4 + Math.floor(Math.random() * 8)) * 3600,
       })
       positions[`sim:${id}`] = { x: 1040 + (i % 10) * 152, y: 40 + Math.floor(i / 10) * 74 }
     }
@@ -767,6 +869,309 @@ export default function RouteViz() {
     return { routeId: rewire.routeId, x: rewire.x, y: rewire.y, x1: c.x, y1: c.y }
   }, [rewire, posOf])
 
+  /* ============================================================
+     右侧属性面板：选中网络 / 线条 / 设备时展示上下游与详细属性
+     ============================================================ */
+  const sysNet = sys.data?.net || {}
+  const selEdge = sel ? edges.find((e) => e.key === sel) : undefined
+
+  const leaseOf = (ip: string) => leaseList.find((l) => l.ip === ip)
+  const trafficOf = (ip: string) => trafficIps.find((x) => x.ip === ip)
+
+  const inSubnet = (ip: string, f?: IfaceInfo) => {
+    const m = maskToOctets(f?.netmask)
+    if (!f?.ipaddr || !m) return true
+    const a = ip.split('.').map(Number)
+    const b = f.ipaddr.split('.').map(Number)
+    if (a.length !== 4 || b.length !== 4) return true
+    for (let i = 0; i < 4; i++) if ((a[i] & m[i]) !== (b[i] & m[i])) return false
+    return true
+  }
+
+  interface DevRow { ip: string; name: string; mac: string; lease: number; sim: boolean }
+
+  const devicesOf = (ifName: string): DevRow[] => {
+    const f = ifaceByName.get(ifName)
+    const nowTs = Math.floor(Date.now() / 1000)
+    const real: DevRow[] = leaseList
+      .filter((l) => inSubnet(l.ip, f))
+      .map((l) => ({ ip: l.ip, name: l.hostname || hostsMap[l.ip] || '未知设备', mac: l.mac, lease: l.expires, sim: false }))
+    const simRows: DevRow[] = sims
+      .filter((s) => s.iface === ifName)
+      .map((s) => ({ ip: s.ip, name: s.name, mac: s.mac, lease: Math.max(0, s.expTs - nowTs), sim: true }))
+    return [...real, ...simRows]
+  }
+
+  const DevList = ({ rows }: { rows: DevRow[] }) => (
+    <div>
+      {rows.length === 0 && <div className="muted small">该网络下暂无接入设备</div>}
+      {rows.slice(0, 10).map((d) => {
+        const t = trafficOf(d.ip)
+        return (
+          <div className="prop-node" key={d.ip}>
+            <i />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="pn-name">
+                {d.name}
+                {d.sim && <span className="pn-tag">模拟</span>}
+              </div>
+              <div className="pn-detail mono">{d.ip} · {d.mac}</div>
+              <div className="pn-detail">租期剩余 {fmtUptime(d.lease)} · ↑ {fmtBytes(t?.up)} ↓ {fmtBytes(t?.down)}</div>
+            </div>
+          </div>
+        )
+      })}
+      {rows.length > 10 && <div className="muted small">…共 {rows.length} 台，仅显示前 10 台</div>}
+    </div>
+  )
+
+  const wanLinks = nodes.filter(isWan).map((w) => (
+    <PLink key={w.name} name={`上联出口 ${w.name}`} detail={`${w.ipaddr || '未获取 IP'} · ${w.up ? '在线' : '离线'}`} />
+  ))
+
+  const ifacePanel = (f: IfaceInfo) => {
+    const dev = f.device ? sysNet[f.device] : undefined
+    const r = f.device ? rates[f.device] : undefined
+    const wan = isWan(f)
+    const routesVia = staticRoutes.filter((x) => x.iface === f.name)
+    return (
+      <>
+        <div className="prop-title">
+          <span>{f.name}</span>
+          <Badge kind={f.up ? 'ok' : 'danger'}>{f.up ? '在线' : '离线'}</Badge>
+        </div>
+        <PSec title="基本信息">
+          <PKV k="接口名称" v={f.name} />
+          <PKV k="网络设备" v={f.device || '—'} />
+          <PKV k="协议" v={f.proto} />
+          {typeof f.uptime === 'number' && f.uptime > 0 ? <PKV k="在线时长" v={fmtUptime(f.uptime)} /> : null}
+        </PSec>
+        <PSec title="网络信息">
+          <PKV k="IP 地址" v={<span className="mono">{f.ipaddr || '未获取 IP'}</span>} />
+          <PKV k="子网掩码" v={<span className="mono">{maskText(f.netmask)}</span>} />
+          {f.gateway ? <PKV k="网关" v={<span className="mono">{f.gateway}</span>} /> : null}
+          <PKV k="角色" v={wan ? '上联出口 (WAN)' : '内网接入 (LAN)'} />
+        </PSec>
+        <PSec title="流量">
+          <PKV k="累计接收" v={fmtBytes(dev?.rx)} />
+          <PKV k="累计发送" v={fmtBytes(dev?.tx)} />
+          <PKV k="当前速率" v={`↓ ${fmtRate(r?.rx || 0)} / ↑ ${fmtRate(r?.tx || 0)}`} />
+        </PSec>
+        <PSec title="上游">
+          {wan ? (
+            <>
+              <PLink name="上级网络 / 互联网" detail={f.proto === 'dhcp' ? 'DHCP 自动获取地址' : `协议 ${f.proto}`} />
+              <PLink name="核心路由（月月岛路由）" detail="NAT / 转发 / 策略分流" />
+            </>
+          ) : (
+            <>
+              <PLink name="核心路由（月月岛路由）" detail="192.168.21.1 · NAT / 转发" />
+              {wanLinks}
+            </>
+          )}
+        </PSec>
+        <PSec title="下游">
+          {wan ? (
+            <>
+              <div className="muted small">经此出口的静态路由 {routesVia.length} 条</div>
+              {routesVia.map((x) => (
+                <PLink key={x.id} name={x.target} detail={`via ${x.gateway || '直连'} · metric ${x.metric}`} />
+              ))}
+            </>
+          ) : (
+            <>
+              <div className="muted small">接入设备 {devicesOf(f.name).length} 台（含模拟）</div>
+              <DevList rows={devicesOf(f.name)} />
+            </>
+          )}
+        </PSec>
+      </>
+    )
+  }
+
+  const devPanel = (d: DevRow, ifName: string) => {
+    const f = ifaceByName.get(ifName)
+    const t = trafficOf(d.ip)
+    const lease = leaseOf(d.ip)
+    return (
+      <>
+        <div className="prop-title">
+          <span>{d.name}</span>
+          <Badge kind="mute">{d.sim ? '模拟设备' : '接入设备'}</Badge>
+        </div>
+        <PSec title="设备信息">
+          <PKV k="IP 地址" v={<span className="mono">{d.ip}</span>} />
+          <PKV k="子网掩码" v={<span className="mono">{maskText(f?.netmask) === '—' ? '255.255.255.0（/24）' : maskText(f?.netmask)}</span>} />
+          <PKV k="MAC 地址" v={<span className="mono">{d.mac}</span>} />
+          <PKV k="主机名" v={d.name} />
+        </PSec>
+        <PSec title="租期与流量">
+          <PKV k="DHCP 租期剩余" v={fmtUptime(lease ? lease.expires : d.lease)} />
+          <PKV k="本月上传" v={fmtBytes(t?.up)} />
+          <PKV k="本月下载" v={fmtBytes(t?.down)} />
+          <PKV k="本月合计" v={fmtBytes(t?.total)} />
+        </PSec>
+        <PSec title="上游链路">
+          <PLink name={`接入接口 ${ifName}`} detail={`${f?.ipaddr || '—'} / ${maskText(f?.netmask)} · ${f?.up ? '在线' : '离线'}`} />
+          <PLink name="核心路由（月月岛路由）" detail="192.168.21.1 · NAT / 转发" />
+          {wanLinks}
+        </PSec>
+        <PSec title="下游">
+          <div className="muted small">终端设备，无下游网络</div>
+        </PSec>
+      </>
+    )
+  }
+
+  const routePanel = (r: RouteItem) => {
+    const f = ifaceByName.get(r.iface)
+    return (
+      <>
+        <div className="prop-title">
+          <span className="mono">{r.target}</span>
+          <Badge kind={r.enabled ? 'ok' : 'mute'}>{r.enabled ? '启用' : '停用'}</Badge>
+        </div>
+        <PSec title="路由信息">
+          <PKV k="目标网段" v={<span className="mono">{r.target}</span>} />
+          <PKV k="网关" v={<span className="mono">{r.gateway || '直连'}</span>} />
+          <PKV k="出口接口" v={r.iface} />
+          <PKV k="跃点 (metric)" v={r.metric} />
+          <PKV k="路由表" v={r.table} />
+          <PKV k="来源" v={r.source === 'static' ? '静态配置' : '运行时'} />
+        </PSec>
+        <PSec title="上游">
+          <PLink name="核心路由（月月岛路由）" detail="转发决策 / 策略分流" />
+        </PSec>
+        <PSec title="下游">
+          {f ? (
+            <>
+              <PLink name={`出口接口 ${f.name}`} detail={`${f.ipaddr || '未获取 IP'} / ${maskText(f.netmask)} · ${f.up ? '在线' : '离线'}`} />
+              {!isWan(f) && <DevList rows={devicesOf(f.name)} />}
+            </>
+          ) : (
+            <div className="muted small">出口接口 {r.iface}（未找到）</div>
+          )}
+        </PSec>
+        <div className="row mt8" style={{ gap: 6 }}>
+          <button className="btn small" onClick={() => openEdit(r)}>编辑</button>
+          <button className="btn small" onClick={() => toggleRoute(r)}>{r.enabled ? '停用' : '启用'}</button>
+          <button className="btn small ghost" onClick={() => delRoute(r.id)}>删除</button>
+        </div>
+      </>
+    )
+  }
+
+  const corePanel = () => {
+    const lans = nodes.filter((f) => !isWan(f))
+    return (
+      <>
+        <div className="prop-title">
+          <span>月月岛路由（核心）</span>
+          <Badge kind="ok">本机</Badge>
+        </div>
+        <PSec title="设备信息">
+          <PKV k="主机名" v={sys.data?.hostname || '—'} />
+          <PKV k="管理地址" v={<span className="mono">192.168.21.1</span>} />
+          <PKV k="运行时间" v={sys.data ? fmtUptime(sys.data.uptime) : '—'} />
+          <PKV k="活动连接" v={sys.data?.conn ?? '—'} />
+          <PKV k="固件版本" v={sys.data?.version || '—'} />
+        </PSec>
+        <PSec title="上游">
+          {wanLinks.length > 0 ? wanLinks : <div className="muted small">无上联接口</div>}
+        </PSec>
+        <PSec title="下游">
+          {lans.map((l) => (
+            <PLink key={l.name} name={`内网接口 ${l.name}`} detail={`${l.ipaddr || '未获取 IP'} / ${maskText(l.netmask)} · 接入 ${devicesOf(l.name).length} 台`} />
+          ))}
+        </PSec>
+      </>
+    )
+  }
+
+  const edgePanel = (e: EdgeInfo) => {
+    const rp = e.routeId ? routes.find((x) => x.id === e.routeId) : undefined
+    const f = e.ifaceName ? ifaceByName.get(e.ifaceName) : undefined
+    const simDev = e.simId ? sims.find((x) => x.id === e.simId) : undefined
+    return (
+      <>
+        <div className="prop-title">
+          <span>连线</span>
+          <Badge kind={e.up ? 'ok' : 'danger'}>{e.up ? '连通' : '停用'}</Badge>
+        </div>
+        <PSec title="连接信息">
+          <PKV k="类型" v={e.kind === 'sim' ? '设备接入连线' : e.kind === 'iface' ? '接口连线' : '路由连线'} />
+          <PKV k="状态" v={e.dashed ? '已停用（虚线）' : '正常'} />
+        </PSec>
+        <PSec title="上游">
+          {e.kind === 'sim' && simDev ? (
+            <PLink name={simDev.name} detail={`${simDev.ip} · ${simDev.mac}`} />
+          ) : e.kind === 'rt-if' && rp ? (
+            <PLink name={`静态路由 ${rp.target}`} detail={`via ${rp.gateway || '直连'} · metric ${rp.metric}`} />
+          ) : (
+            <PLink name="核心路由（月月岛路由）" detail="192.168.21.1 · NAT / 转发" />
+          )}
+        </PSec>
+        <PSec title="下游">
+          {f ? (
+            <>
+              <PLink name={`接口 ${f.name}`} detail={`${f.ipaddr || '未获取 IP'} / ${maskText(f.netmask)} · ${f.up ? '在线' : '离线'}`} />
+              {!isWan(f) && <DevList rows={devicesOf(f.name)} />}
+            </>
+          ) : rp ? (
+            <PLink name={`静态路由 ${rp.target}`} detail={`via ${rp.gateway || '直连'} → ${rp.iface}`} />
+          ) : (
+            <div className="muted small">—</div>
+          )}
+        </PSec>
+        {rp && (
+          <div className="row mt8" style={{ gap: 6 }}>
+            <button className="btn small" onClick={() => openEdit(rp)}>编辑路由</button>
+            <button className="btn small" onClick={() => toggleRoute(rp)}>{rp.enabled ? '停用' : '启用'}</button>
+            <button className="btn small ghost" onClick={() => delRoute(rp.id)}>删除</button>
+          </div>
+        )}
+      </>
+    )
+  }
+
+  const overviewPanel = (
+    <>
+      <div className="prop-title"><span>属性</span></div>
+      <div className="muted small" style={{ lineHeight: 1.8 }}>
+        点击画布中的节点、设备或连线，这里会显示它的详细属性与上下游网络信息。
+      </div>
+      <PSec title="拓扑概览">
+        <PKV k="接口" v={`${nodes.length}（在线 ${nodes.filter((f) => f.up).length}）`} />
+        <PKV k="静态路由" v={staticRoutes.length} />
+        <PKV k="模拟设备" v={sims.length} />
+        <PKV k="DHCP 租约" v={leaseList.length} />
+        <PKV k="活动连接" v={sys.data?.conn ?? '—'} />
+      </PSec>
+    </>
+  )
+
+  const renderProps = () => {
+    if (selEdge) return edgePanel(selEdge)
+    if (!sel) return overviewPanel
+    if (sel === 'core') return corePanel()
+    if (sel.startsWith('route:')) {
+      const r = routes.find((x) => `route:${x.id}` === sel)
+      if (r) return routePanel(r)
+    }
+    if (sel.startsWith('sim:')) {
+      const s = sims.find((x) => `sim:${x.id}` === sel)
+      if (s) {
+        return devPanel(
+          { ip: s.ip, name: s.name, mac: s.mac, lease: Math.max(0, s.expTs - Math.floor(Date.now() / 1000)), sim: true },
+          s.iface,
+        )
+      }
+    }
+    const f = ifaceByName.get(sel)
+    if (f) return ifacePanel(f)
+    return overviewPanel
+  }
+
   if (topo.loading) return <Loading text="正在加载路由工作流…" />
 
   const online = nodes.filter((f) => f.up).length
@@ -807,8 +1212,10 @@ export default function RouteViz() {
         </div>
       </div>
 
+      <div className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
       <Card
         title="工作流画布"
+        style={{ flex: 1, minWidth: 0 }}
         right={
           <div className="wf-toolbar" data-testid="wf-toolbar">
             <button className="btn small ghost" data-testid="wf-sim" onClick={makeSims} title="生成 100 个模拟接入设备（仅演示）">模拟 100 设备</button>
@@ -905,6 +1312,12 @@ export default function RouteViz() {
           </div>
         </div>
       </Card>
+
+      {/* 右侧属性面板：选中网络 / 线条 / 设备时展示上下游信息 */}
+      <div className="card wf-props" data-testid="wf-props">
+        {renderProps()}
+      </div>
+      </div>
 
       {/* 运行时路由表 */}
       {settings.runtime && (

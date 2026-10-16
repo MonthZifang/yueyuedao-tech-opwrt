@@ -1383,6 +1383,84 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
 }
 
+/* ============================================================
+   路由工作流：右侧属性面板
+   ============================================================ */
+.wf-props {
+  width: 320px;
+  min-width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+.wf-props .prop-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.prop-sec { margin-top: 12px; }
+.prop-sec h4 {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.prop-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 12.5px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--glass-border) 45%, transparent);
+}
+.prop-row:last-child { border-bottom: none; }
+.prop-row .pk { color: var(--text-2); flex-shrink: 0; }
+.prop-row .pv { text-align: right; word-break: break-all; }
+.prop-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  margin: 5px 0;
+  background: color-mix(in srgb, var(--glass) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--glass-border) 70%, transparent);
+}
+.prop-node i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+  background: var(--yy-accent);
+  box-shadow: 0 0 6px var(--yy-accent-glow);
+}
+.prop-node .pn-name { font-size: 12.5px; font-weight: 700; }
+.prop-node .pn-detail { font-size: 11px; color: var(--text-1); line-height: 1.55; }
+.prop-node .pn-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-2);
+  border: 1px solid var(--glass-border);
+}
+@media (max-width: 1100px) {
+  .wf-props { width: 100%; position: static; max-height: none; }
+}
+
 /* 导航搜索 */
 .yy-nav-search {
   display: flex;

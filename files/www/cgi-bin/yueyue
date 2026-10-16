@@ -375,10 +375,23 @@ local function iface_list()
 	if ok and data and data.interface then
 		for _, itf in ipairs(data.interface) do
 			local ipv4 = itf["ipv4-address"] and itf["ipv4-address"][1]
+			local gw = nil
+			if type(itf.route) == "table" then
+				for _, rt in ipairs(itf.route) do
+					if type(rt) == "table" and tostring(rt.target or "0.0.0.0") == "0.0.0.0" then
+						local nh = rt.nexthop
+						if type(nh) == "string" then gw = nh
+						elseif type(nh) == "table" then gw = nh[1] end
+						if gw then break end
+					end
+				end
+			end
 			byname[itf.interface] = {
 				up = itf.up and true or false,
 				ipaddr = ipv4 and ipv4.address or nil,
 				netmask = ipv4 and ipv4.mask or nil,
+				gateway = gw,
+				uptime = itf.uptime or nil,
 				device = itf.l3_device or itf.device or "",
 			}
 		end
@@ -393,6 +406,8 @@ local function iface_list()
 				device = st.device or s.device or s.ifname or "",
 				ipaddr = st.ipaddr or s.ipaddr,
 				netmask = st.netmask or s.netmask,
+				gateway = st.gateway or nil,
+				uptime = st.uptime or nil,
 				proto = s.proto or "static",
 				up = st.up and true or false,
 			}
@@ -613,6 +628,7 @@ function act.wizard_status()
 		lan_ip = ucicursor:get("network", "lan", "ipaddr") or "192.168.21.1",
 		wan_proto = ucicursor:get("network", "wan", "proto") or "dhcp",
 		uplink = ucicursor:get("network", "wwan", "proto") and true or false,
+		main_router = ucicursor:get("yueyue", "wizard", "main_router") ~= "0",
 		version = distro_version(),
 	})
 end
@@ -676,6 +692,22 @@ end
 function act.wizard_mode()
 	need_root()
 	local mode = tostring(arg("mode") or "simple")
+
+	-- 网络角色：是否为主路由（主路由 = LAN DHCP 服务；二级路由 = 关闭本机 DHCP，由上级下发地址）
+	local mr = arg("main_router")
+	if mr ~= nil then
+		local is_main = tostring(mr) ~= "0"
+		ucicursor:set("yueyue", "wizard", "main_router", is_main and "1" or "0")
+		for dname, ds in pairs(ucicursor:get_all("dhcp") or {}) do
+			if ds[".type"] == "dhcp" and (ds.interface or "") == "lan" then
+				ucicursor:set("dhcp", dname, "ignore", is_main and "0" or "1")
+			end
+		end
+		ucicursor:commit("yueyue")
+		ucicursor:commit("dhcp")
+		reload_network()
+		exec("/etc/init.d/dnsmasq reload >/dev/null 2>&1")
+	end
 
 	if mode == "simple" then
 		reply({ ok = true, mode = "simple" })

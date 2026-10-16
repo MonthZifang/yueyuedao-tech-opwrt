@@ -64,7 +64,7 @@ export const api = {
 
   // 向导
   wizardStatus: () =>
-    call<{ done: boolean; hostname: string; lan_ip: string; wan_proto: string; uplink: boolean; version: string }>('wizard_status'),
+    call<{ done: boolean; hostname: string; lan_ip: string; wan_proto: string; uplink: boolean; version: string; main_router?: boolean }>('wizard_status'),
   wizardScan: () => call<{ aps: WifiAp[]; devices: string[] }>('wizard_scan'),
   wizardUplink: (params: Record<string, unknown>) =>
     call<{ ok: boolean; msg?: string }>('wizard_uplink', { body: params }),

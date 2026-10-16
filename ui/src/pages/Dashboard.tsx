@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Stat, Progress, LineChart, Loading, Empty, useAsync, Badge, Legend } from '../components/ui'
+import { Card, Stat, Progress, LineChart, Empty, useAsync, Legend } from '../components/ui'
 import { api } from '../lib/api'
 import { fmtBytes, fmtUptime, fmtMonth, pct, fmtRate } from '../lib/format'
 
@@ -101,34 +101,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* TOP IP 榜 + 性能趋势 */}
-      <div className="grid c2 mt16">
-        <Card title="本月流量 TOP 5 IP" right={<button className="btn small" onClick={() => navigate('/traffic')}>全部</button>}>
-          {traffic.loading ? (
-            <Loading />
-          ) : top.length === 0 ? (
-            <Empty text="还没有采样数据，稍等片刻或产生一些流量" />
-          ) : (
-            top.map((ip) => (
-              <div key={ip.ip} className="row clickable" style={{ padding: '9px 4px', cursor: 'pointer' }} onClick={() => navigate(`/traffic?ip=${ip.ip}`)}>
-                <div className="grow">
-                  <div className="row" style={{ gap: 8 }}>
-                    <span className="mono" style={{ fontSize: 13.5, fontWeight: 700 }}>{ip.ip}</span>
-                    {t?.hosts?.[ip.ip] && <Badge kind="mute">{t.hosts[ip.ip]}</Badge>}
-                  </div>
-                  <div className="muted small">
-                    ↑ {fmtBytes(ip.up)} · ↓ {fmtBytes(ip.down)}
-                  </div>
-                  <div className="mt8">
-                    <Progress value={pct(ip.total, maxIp)} />
-                  </div>
-                </div>
-                <div className="right" style={{ minWidth: 88, fontWeight: 700 }}>{fmtBytes(ip.total)}</div>
-              </div>
-            ))
-          )}
-        </Card>
-
+      {/* 性能趋势 */}
+      <div className="mt16">
         <Card title="性能趋势（最近 2 小时）" right={<button className="btn small" onClick={() => navigate('/perf')}>详细</button>}>
           {cpuSeries.length > 2 ? (
             <>
@@ -161,7 +135,7 @@ export default function Dashboard() {
       {/* 快捷入口 */}
       <div className="grid c4 mt16">
         {[
-          { to: '/routes', icon: '🗺️', t: '路由可视化', d: '拓扑 / 静态路由' },
+          { to: '/routes', icon: '🗺️', t: '路由工作流', d: '画布 / 静态路由 / 右键配置' },
           { to: '/realtime', icon: '📡', t: '实时流量', d: '各网卡速率' },
           { to: '/diag', icon: '🩺', t: '网络诊断', d: 'ping / 路由追踪' },
           { to: '/settings', icon: '🎨', t: '个性化', d: '背景 / 主题 / 配色' },

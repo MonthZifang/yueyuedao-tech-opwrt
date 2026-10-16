@@ -69,6 +69,7 @@ interface CtxState {
 }
 
 const isWan = (f: IfaceInfo) => f.name.startsWith('wan') || f.name.startsWith('wwan')
+const isLoopback = (f: IfaceInfo) => f.device === 'lo' || f.name === 'lo' || f.name === 'loopback'
 
 export default function RouteViz() {
   const topo = useAsync(() => api.topology(), [])
@@ -89,8 +90,14 @@ export default function RouteViz() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const dragOff = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const panStart = useRef<{ x: number; y: number; px: number; py: number }>({ x: 0, y: 0, px: 0, py: 0 })
+  const panRef = useRef(pan)
+  const zoomRef = useRef(zoom)
+  panRef.current = pan
+  zoomRef.current = zoom
 
   const ifaces = topo.data?.ifaces || []
+  // 回环口不参与拓扑可视化（不画节点不连线）
+  const nodes = ifaces.filter((f) => !isLoopback(f))
   const routes = topo.data?.routes || []
   const staticRoutes = routes.filter((r) => r.source === 'static')
   const runtimeRoutes = routes.filter((r) => r.source === 'runtime')
@@ -101,7 +108,7 @@ export default function RouteViz() {
     const m: Record<string, LayoutPos> = { core: { x: 430, y: 180 } }
     let wi = 0
     let li = 0
-    ifaces.forEach((f) => {
+    nodes.forEach((f) => {
       if (isWan(f)) {
         m[f.name] = { x: 48, y: 64 + wi * 128 }
         wi++
@@ -114,7 +121,7 @@ export default function RouteViz() {
       m[`route:${r.id}`] = { x: 268 + (i % 3) * 260, y: 400 + Math.floor(i / 3) * 128 }
     })
     return m
-  }, [ifaces, staticRoutes])
+  }, [nodes, staticRoutes])
 
   useEffect(() => {
     if (topo.data?.layout) {
@@ -141,7 +148,8 @@ export default function RouteViz() {
     if (e.button !== 0) return
     e.stopPropagation()
     const p = posOf(key)
-    dragOff.current = { x: e.clientX / zoom - p.x, y: e.clientY / zoom - p.y }
+    // 世界坐标 = (屏幕坐标 - 平移) / 缩放，拖拽偏移必须扣掉 pan
+    dragOff.current = { x: (e.clientX - pan.x) / zoom - p.x, y: (e.clientY - pan.y) / zoom - p.y }
     setDragging(key)
     setSel(key)
   }
@@ -158,8 +166,8 @@ export default function RouteViz() {
     const move = (e: MouseEvent) => {
       if (dragging) {
         setLayout((l) => {
-          let x = e.clientX / zoom - dragOff.current.x
-          let y = e.clientY / zoom - dragOff.current.y
+          let x = (e.clientX - pan.x) / zoom - dragOff.current.x
+          let y = (e.clientY - pan.y) / zoom - dragOff.current.y
           if (settings.snap) {
             x = Math.round(x / SNAP) * SNAP
             y = Math.round(y / SNAP) * SNAP
@@ -183,16 +191,23 @@ export default function RouteViz() {
       window.removeEventListener('mousemove', move)
       window.removeEventListener('mouseup', up)
     }
-  }, [dragging, panning, zoom, settings.snap])
+  }, [dragging, panning, zoom, pan, settings.snap])
 
-  /* 滚轮缩放（原生监听，passive:false 才能阻止页面滚动） */
+  /* 滚轮缩放（原生监听，passive:false 才能阻止页面滚动；锚定鼠标位置缩放） */
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.08 : 0.08
-      setZoom((z) => Math.min(1.8, Math.max(0.4, Math.round((z + delta) * 100) / 100)))
+      const rect = el.getBoundingClientRect()
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+      const z0 = zoomRef.current
+      const p0 = panRef.current
+      const nz = Math.min(1.8, Math.max(0.4, Math.round((z0 + (e.deltaY > 0 ? -0.08 : 0.08)) * 100) / 100))
+      const k = nz / z0
+      setPan({ x: cx - (cx - p0.x) * k, y: cy - (cy - p0.y) * k })
+      setZoom(nz)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -236,9 +251,10 @@ export default function RouteViz() {
     setPan({ x: 0, y: 0 })
     setZoom(1)
     toast('已恢复自动排列', 'ok')
+    window.setTimeout(() => fitView(), 60)
   }
 
-  const fitView = () => {
+  function fitView() {
     const el = canvasRef.current
     if (!el) return
     const keys = Object.keys({ ...autoPos, ...layout })
@@ -246,13 +262,21 @@ export default function RouteViz() {
     let maxY = 0
     keys.forEach((k) => {
       const p = posOf(k)
-      maxX = Math.max(maxX, p.x + 220)
-      maxY = Math.max(maxY, p.y + 120)
+      maxX = Math.max(maxX, p.x + 240)
+      maxY = Math.max(maxY, p.y + 130)
     })
-    const z = Math.min(1.2, Math.max(0.4, Math.min(el.clientWidth / (maxX + 40), el.clientHeight / (maxY + 40))))
+    const z = Math.min(1.15, Math.max(0.4, Math.min(el.clientWidth / (maxX + 30), el.clientHeight / (maxY + 30))))
     setZoom(Math.round(z * 100) / 100)
-    setPan({ x: 20, y: 16 })
+    setPan({ x: 16, y: 12 })
   }
+
+  /* 数据就绪后自动适应视野，避免节点被画布裁掉 */
+  useEffect(() => {
+    if (!topo.data) return
+    const t = window.setTimeout(() => fitView(), 80)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topo.data])
 
   const canvasSize = useMemo(() => {
     const keys = Object.keys({ ...autoPos, ...layout })
@@ -326,13 +350,13 @@ export default function RouteViz() {
   }
 
   const newRoute = (iface?: string) =>
-    setEdit({ enabled: true, metric: 0, iface: iface || (ifaces[0]?.name ?? 'lan') })
+    setEdit({ enabled: true, metric: 0, iface: iface || (nodes[0]?.name ?? 'lan') })
 
   /* ---------- 连线 ---------- */
   const edges = useMemo(() => {
     const core = centerOf(posOf('core'), 'core')
     const out: { key: string; d: string; up: boolean; dashed: boolean }[] = []
-    ifaces.forEach((f) => {
+    nodes.forEach((f) => {
       const c = centerOf(posOf(f.name), isWan(f) ? 'wan' : 'lan')
       out.push({
         key: `e-${f.name}`,
@@ -344,18 +368,18 @@ export default function RouteViz() {
     staticRoutes.forEach((r) => {
       const rc = centerOf(posOf(`route:${r.id}`), 'route')
       out.push({ key: `e-core-${r.id}`, d: curve(core.x, core.y, rc.x, rc.y), up: r.enabled, dashed: !r.enabled })
-      const f = ifaces.find((x) => x.name === r.iface)
+      const f = nodes.find((x) => x.name === r.iface)
       if (f) {
         const fc = centerOf(posOf(f.name), isWan(f) ? 'wan' : 'lan')
         out.push({ key: `e-if-${r.id}`, d: curve(rc.x, rc.y, fc.x, fc.y), up: r.enabled && f.up, dashed: !r.enabled })
       }
     })
     return out
-  }, [ifaces, staticRoutes, posOf])
+  }, [nodes, staticRoutes, posOf])
 
   if (topo.loading) return <Loading text="正在加载路由工作流…" />
 
-  const online = ifaces.filter((f) => f.up).length
+  const online = nodes.filter((f) => f.up).length
 
   return (
     <div>
@@ -383,7 +407,7 @@ export default function RouteViz() {
             </div>
           </div>
           <div className="row" style={{ gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-            <span className="pill"><i className={`dot ${online > 0 ? 'ok' : 'danger'}`} />接口 {ifaces.length}（在线 {online}）</span>
+            <span className="pill"><i className={`dot ${online > 0 ? 'ok' : 'danger'}`} />接口 {nodes.length}（在线 {online}）</span>
             <span className="pill"><i className="dot ok" />静态路由 {staticRoutes.length}</span>
             <span className="pill"><i className="dot warn" />运行时路由 {runtimeRoutes.length}</span>
             {pending && <span className="pill"><i className="dot warn" />有未应用的更改</span>}
@@ -444,7 +468,7 @@ export default function RouteViz() {
             </div>
 
             {/* 接口节点 */}
-            {ifaces.map((f) => {
+            {nodes.map((f) => {
               const kind: NodeKind = isWan(f) ? 'wan' : 'lan'
               const p = posOf(f.name)
               return (
@@ -600,7 +624,7 @@ export default function RouteViz() {
               <button
                 className="ctx-item"
                 onClick={() => {
-                  const f = ifaces.find((x) => x.name === ctx.id)
+                  const f = nodes.find((x) => x.name === ctx.id)
                   if (f) toast(`${f.name} · ${f.ipaddr || '未获取 IP'} · ${f.device} · ${f.proto}`, 'ok')
                 }}
               >
@@ -664,7 +688,7 @@ export default function RouteViz() {
             <Field label="出口接口">
               <select className="input" value={edit.iface || 'lan'} data-testid="wf-edit-iface"
                 onChange={(e) => setEdit({ ...edit, iface: e.target.value })}>
-                {ifaces.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                {nodes.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
               </select>
             </Field>
             <Field label="跃点 (metric，小者优先)">

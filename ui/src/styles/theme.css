@@ -382,6 +382,7 @@ body {
    表格
    ============================================================ */
 .table-wrap { overflow-x: auto; }
+table.yy th:last-child, table.yy td:last-child { white-space: nowrap; }
 table.yy {
   width: 100%;
   border-collapse: collapse;
@@ -629,7 +630,7 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   animation: yy-fade 0.2s var(--ease);
 }
 .modal {
-  width: min(560px, 100%);
+  width: min(680px, 100%);
   max-height: 86vh;
   overflow-y: auto;
   background: var(--glass-strong);
@@ -1137,22 +1138,22 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
 .wf-zoom {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
+  gap: 5px;
+  padding: 3px 9px;
   border-radius: 99px;
   border: 1px solid var(--glass-border);
   background: color-mix(in srgb, var(--glass) 80%, transparent);
   font-size: 11px;
 }
-.wf-zoom b { min-width: 38px; text-align: center; font-family: var(--font-num); }
+.wf-zoom b { min-width: 42px; text-align: center; font-family: var(--font-num); }
 .wf-zoom button {
   border: none;
   background: none;
   color: var(--text-1);
   cursor: pointer;
   font-size: 13px;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
 }
 .wf-zoom button:hover { background: var(--yy-accent-dim); color: var(--text-0); }
@@ -1193,7 +1194,11 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   position: absolute;
   padding: 10px 12px;
   border-radius: 14px;
-  background: var(--glass-strong);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--glass-strong) 88%, #000),
+    color-mix(in srgb, var(--glass-strong) 74%, #000)
+  );
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-sm);
   cursor: grab;
@@ -1210,16 +1215,21 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   border-top: 3px solid var(--yy-accent);
   background: linear-gradient(
     150deg,
-    color-mix(in srgb, var(--yy-accent) 18%, var(--glass-strong)),
-    var(--glass-strong)
+    color-mix(in srgb, var(--yy-accent) 20%, color-mix(in srgb, var(--glass-strong) 85%, #000)),
+    color-mix(in srgb, var(--glass-strong) 78%, #000)
   );
 }
+.wf-core .n-dot { background: var(--yy-accent); box-shadow: 0 0 7px var(--yy-accent-glow); }
 .wf-wan { border-top: 3px solid var(--yy-accent); }
 .wf-lan { border-top: 3px solid var(--warn); }
 .wf-route {
   border-top: 3px solid color-mix(in srgb, var(--warn) 70%, var(--yy-accent));
   border-style: solid;
-  background: color-mix(in srgb, var(--glass-strong) 92%, var(--warn));
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--glass-strong) 86%, var(--warn)),
+    color-mix(in srgb, var(--glass-strong) 74%, #000)
+  );
 }
 .wf-node .n-head { display: flex; align-items: center; gap: 6px; }
 .wf-node .n-ico { font-size: 14px; }
@@ -1242,7 +1252,7 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
 .wf-node .n-dot.bad { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
 .wf-node .n-sub {
   font-size: 10.5px;
-  color: var(--text-2);
+  color: var(--text-1);
   margin-top: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1262,7 +1272,7 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
 .wf-port.right { right: -5px; }
 .wf-hint {
   position: absolute;
-  left: 14px;
+  right: 14px;
   bottom: 10px;
   padding: 4px 12px;
   border-radius: 99px;
@@ -1300,6 +1310,8 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   color: var(--text-1);
   font-family: inherit;
   font-size: 12.5px;
+  line-height: 1.5;
+  white-space: nowrap;
   border-radius: 9px;
   cursor: pointer;
   text-align: left;

@@ -100,10 +100,10 @@ export function Loading({ text = '加载中…' }: { text?: string }) {
   )
 }
 
-export function Empty({ text = '暂无数据', icon = '🌙' }: { text?: string; icon?: string }) {
+export function Empty({ text = '暂无数据', icon = '' }: { text?: string; icon?: string }) {
   return (
     <div className="center muted" style={{ padding: 34 }}>
-      <div style={{ fontSize: 30, opacity: 0.5, marginBottom: 8 }}>{icon}</div>
+      {icon && <div style={{ fontSize: 30, opacity: 0.5, marginBottom: 8 }}>{icon}</div>}
       <div className="small">{text}</div>
     </div>
   )
@@ -168,6 +168,26 @@ export interface Series {
   fill?: boolean
 }
 
+/* 测量容器实际像素宽度：图表 1:1 渲染，避免 viewBox 非等比拉伸导致线条/文字扭曲 */
+function useMeasure<T extends HTMLElement>() {
+  const ref = React.useRef<T | null>(null)
+  const [w, setW] = React.useState(0)
+  React.useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => setW(el.clientWidth || 0)
+    update()
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(update)
+      ro.observe(el)
+      return () => ro.disconnect()
+    }
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+  return { ref, w }
+}
+
 function niceCeil(v: number): number {
   if (v <= 0) return 1
   const exp = Math.floor(Math.log10(v))
@@ -185,7 +205,8 @@ export function LineChart({ series, labels, height = 160, unit = '', max }: {
   max?: number
 }) {
   const gid = React.useId().replace(/:/g, '')
-  const width = 640
+  const { ref, w } = useMeasure<HTMLDivElement>()
+  const width = Math.max(280, Math.round(w) || 640)
   const pad = { l: 42, r: 10, t: 10, b: 20 }
   const all = series.flatMap((s) => s.data).filter((v) => isFinite(v))
   const dataMax = max ?? niceCeil(Math.max(1, ...all))
@@ -200,7 +221,8 @@ export function LineChart({ series, labels, height = 160, unit = '', max }: {
     dataMax >= 100 ? String(Math.round(v)) : v.toFixed(v % 1 === 0 ? 0 : v < 10 ? 1 : 0)
 
   return (
-    <svg className="chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ height }}>
+    <div ref={ref} style={{ width: '100%' }}>
+      <svg className="chart" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       <defs>
         {series.map((s, si) => (
           <linearGradient key={si} id={`${gid}-${si}`} x1="0" y1="0" x2="0" y2="1">
@@ -228,7 +250,7 @@ export function LineChart({ series, labels, height = 160, unit = '', max }: {
                 fill={`url(#${gid}-${si})`}
               />
             )}
-            <polyline points={pts} fill="none" stroke={color} strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
+            <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="miter" strokeLinecap="butt" />
           </g>
         )
       })}
@@ -238,7 +260,8 @@ export function LineChart({ series, labels, height = 160, unit = '', max }: {
           <text x={width - pad.r} y={height - 4} textAnchor="end">{labels[labels.length - 1]}</text>
         </g>
       )}
-    </svg>
+      </svg>
+    </div>
   )
 }
 

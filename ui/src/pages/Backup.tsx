@@ -74,17 +74,17 @@ export default function Backup() {
   return (
     <div>
       <div className="grid c2">
-        <Card title="💾 配置备份">
+        <Card title="配置备份">
           <div className="muted" style={{ lineHeight: 1.9 }}>
             备份包含所有配置文件（网络 / 防火墙 / 无线 / 个性化等），<br />
             可用于设备迁移或灾难恢复。
           </div>
           <button className="btn primary mt16" disabled={busy} onClick={doBackup}>
-            {busy ? '生成中…' : '⬇ 下载配置备份'}
+            {busy ? '生成中…' : '下载配置备份'}
           </button>
         </Card>
 
-        <Card title="📤 恢复配置">
+        <Card title="恢复配置">
           <div className="muted" style={{ lineHeight: 1.9 }}>
             从备份文件恢复配置。<br />
             <Badge kind="warn">注意</Badge> 恢复后设备将自动重启。
@@ -106,7 +106,7 @@ export default function Backup() {
         </Card>
       </div>
 
-      <Card title="🔄 固件升级">
+      <Card title="固件升级">
         <div className="muted" style={{ lineHeight: 1.9 }}>
           上传 <span className="mono">.img.gz</span> 固件镜像进行刷写升级。<br />
           <Badge kind="danger">警告</Badge> 刷写过程中请勿断电，设备将自动重启。<br />
@@ -128,7 +128,7 @@ export default function Backup() {
         />
       </Card>
 
-      <Card title="⚡ 重启设备">
+      <Card title="重启设备">
         <div className="muted" style={{ lineHeight: 1.9 }}>
           重启将短暂中断网络连接（约 1-2 分钟）。
         </div>

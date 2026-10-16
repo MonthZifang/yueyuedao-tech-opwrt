@@ -48,7 +48,6 @@ export default function Interfaces() {
             {(sys.data?.ifaces || []).map((f) => (
               <div key={f.name} className="card" style={{ padding: 16 }}>
                 <div className="row">
-                  <div style={{ fontSize: 22 }}>{f.name.startsWith('wan') || f.name.startsWith('wwan') ? '🌍' : '📡'}</div>
                   <div className="grow">
                     <div style={{ fontWeight: 800 }}>{f.name}</div>
                     <div className="muted small">{f.device || '—'} · {f.proto}</div>

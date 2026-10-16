@@ -128,7 +128,7 @@ export default function Settings() {
     <div>
       {/* 个性化 */}
       <Card
-        title="🎨 个性化（背景 / 主题 / 配色）"
+        title="个性化（背景 / 主题 / 配色）"
         right={<button className="btn primary small" disabled={busy} onClick={savePers}>保存设置</button>}
       >
         <div className="grid c2">
@@ -245,7 +245,7 @@ export default function Settings() {
               <span className="spacer" style={{ flex: 1 }} />
               <Seg
                 value={(pers?.theme === 'light' ? 'light' : 'dark') as 'dark' | 'light'}
-                options={[{ value: 'dark', label: '🌙 深色' }, { value: 'light', label: '☀️ 浅色' }]}
+                options={[{ value: 'dark', label: '深色' }, { value: 'light', label: '浅色' }]}
                 onChange={(v) => update({ theme: v })}
               />
             </div>
@@ -254,7 +254,7 @@ export default function Settings() {
       </Card>
 
       {/* 系统 */}
-      <Card title="⚙️ 系统设置" right={<button className="btn primary small" disabled={busy} onClick={saveSystem}>保存</button>}>
+      <Card title="系统设置" right={<button className="btn primary small" disabled={busy} onClick={saveSystem}>保存</button>}>
         <div className="grid c2">
           <Field label="主机名">
             <input className="input" value={hostname} onChange={(e) => setHostname(e.target.value)} />
@@ -271,7 +271,7 @@ export default function Settings() {
       </Card>
 
       {/* 密码 */}
-      <Card title="🔐 管理与密码" right={<button className="btn primary small" disabled={busy} onClick={changePw}>修改密码</button>}>
+      <Card title="管理与密码" right={<button className="btn primary small" disabled={busy} onClick={changePw}>修改密码</button>}>
         <div className="grid c2">
           <Field label="新密码">
             <input className="input" type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} placeholder="至少 4 位" />

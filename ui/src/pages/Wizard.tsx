@@ -158,12 +158,12 @@ export default function Wizard() {
         <div className="wz-pane" key={step}>
           {step === 0 && (
             <div>
-              <h2>欢迎使用 月月岛科技企业路由 🎉</h2>
+              <h2>欢迎使用 月月岛科技企业路由 </h2>
               <p className="muted">
                 本向导将帮助你完成初始配置：<br />
-                1️⃣ 检测并连接上联网络（网线 或 无线中继 WISP）<br />
-                2️⃣ 选择组网方式（标准 / Mesh 组网 / 多网段隔离）<br />
-                3️⃣ 设置管理密码，保障设备安全<br />
+                1⃣ 检测并连接上联网络（网线 或 无线中继 WISP）<br />
+                2⃣ 选择组网方式（标准 / Mesh 组网 / 多网段隔离）<br />
+                3⃣ 设置管理密码，保障设备安全<br />
                 随时可以点击右上角“跳过向导”直接进入控制台。
               </p>
               {status && (
@@ -193,7 +193,6 @@ export default function Wizard() {
                   className={`card choice-card ${uplinkMode === 'wired' ? 'selected' : ''}`}
                   onClick={() => setUplinkMode('wired')}
                 >
-                  <div className="cc-icon">🔌</div>
                   <div className="cc-title">
                     网线接入（DHCP）
                     {uplinkMode === 'wired' && <span className="cc-check">✓</span>}
@@ -204,7 +203,6 @@ export default function Wizard() {
                   className={`card choice-card ${uplinkMode === 'wisp' ? 'selected' : ''}`}
                   onClick={() => { setUplinkMode('wisp'); doScan() }}
                 >
-                  <div className="cc-icon">📶</div>
                   <div className="cc-title">
                     无线中继（WISP）
                     {uplinkMode === 'wisp' && <span className="cc-check">✓</span>}
@@ -217,12 +215,12 @@ export default function Wizard() {
                 <div className="mt16">
                   <div className="row">
                     <button className="btn small" onClick={doScan} disabled={scanning}>
-                      {scanning ? '扫描中…' : '🔄 重新扫描'}
+                      {scanning ? '扫描中…' : '重新扫描'}
                     </button>
                     <span className="muted small">选择要中继的上级无线信号</span>
                   </div>
                   {scanning && <Loading text="正在扫描周边无线信号…" />}
-                  {!scanning && aps.length === 0 && <Empty text="点击上方按钮开始扫描" icon="📡" />}
+                  {!scanning && aps.length === 0 && <Empty text="点击上方按钮开始扫描" />}
                   {!scanning && aps.length > 0 && (
                     <div className="table-wrap mt8" style={{ maxHeight: 240, overflowY: 'auto' }}>
                       <table className="yy">
@@ -264,16 +262,15 @@ export default function Wizard() {
               <h3>选择组网方式</h3>
               <div className="grid c3">
                 {[
-                  { id: 'simple', icon: '🏠', t: '标准路由', d: '单网段 NAT 上网，适合家庭 / 小微办公室' },
-                  { id: 'mesh', icon: '🕸️', t: 'Mesh 组网', d: '多台设备无线回程自动组网，无缝漫游' },
-                  { id: 'vlan', icon: '🧩', t: '多网段隔离', d: '划分多个隔离网段（办公 / 访客 / IoT）' },
+                  { id: 'simple', t: '标准路由', d: '单网段 NAT 上网，适合家庭 / 小微办公室' },
+                  { id: 'mesh', t: 'Mesh 组网', d: '多台设备无线回程自动组网，无缝漫游' },
+                  { id: 'vlan', t: '多网段隔离', d: '划分多个隔离网段（办公 / 访客 / IoT）' },
                 ].map((o) => (
                   <div
                     key={o.id}
                     className={`card choice-card ${netMode === o.id ? 'selected' : ''}`}
                     onClick={() => setNetMode(o.id as any)}
                   >
-                    <div className="cc-icon">{o.icon}</div>
                     <div className="cc-title">
                       {o.t}
                       {netMode === o.id && <span className="cc-check">✓</span>}
@@ -328,10 +325,10 @@ export default function Wizard() {
           {step === 4 && (
             <div className="wz-summary">
               <h3>配置摘要</h3>
-              <div className="kv"><span className="k">🔌 上联方式</span><span>{uplinkMode === 'wired' ? '网线 DHCP' : `WISP 中继 ${selAp?.ssid || ''}`}</span></div>
-              <div className="kv"><span className="k">🧩 组网方式</span><span>{netMode === 'simple' ? '标准路由' : netMode === 'mesh' ? `Mesh（${meshId}）` : `多网段隔离（${vlanCount} 段）`}</span></div>
-              <div className="kv"><span className="k">🔑 管理密码</span><span>{pw1 ? '已修改' : '保持默认'}</span></div>
-              <div className="kv"><span className="k">🌐 管理地址</span><span className="mono">{status?.lan_ip || '192.168.21.1'}</span></div>
+              <div className="kv"><span className="k">上联方式</span><span>{uplinkMode === 'wired' ? '网线 DHCP' : `WISP 中继 ${selAp?.ssid || ''}`}</span></div>
+              <div className="kv"><span className="k">组网方式</span><span>{netMode === 'simple' ? '标准路由' : netMode === 'mesh' ? `Mesh（${meshId}）` : `多网段隔离（${vlanCount} 段）`}</span></div>
+              <div className="kv"><span className="k">管理密码</span><span>{pw1 ? '已修改' : '保持默认'}</span></div>
+              <div className="kv"><span className="k">管理地址</span><span className="mono">{status?.lan_ip || '192.168.21.1'}</span></div>
               <div className="muted small mt16">点击“完成”保存配置并进入控制台首页。</div>
             </div>
           )}

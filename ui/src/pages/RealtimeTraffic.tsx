@@ -13,6 +13,17 @@ interface IfaceHist {
 
 const MAX_POINTS = 90
 
+/* 迷你走势图：提到组件外并 memo，避免每次轮询整表重挂载 */
+const Spark = React.memo(function Spark({ data, color }: { data: number[]; color: string }) {
+  const max = Math.max(1, ...data)
+  const pts = data.map((v, i) => `${(i / Math.max(1, data.length - 1)) * 200},${40 - (v / max) * 36}`).join(' ')
+  return (
+    <svg viewBox="0 0 200 40" preserveAspectRatio="none" style={{ width: '100%', height: 40 }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.6} vectorEffect="non-scaling-stroke" strokeLinejoin="miter" />
+    </svg>
+  )
+})
+
 export default function RealtimeTraffic() {
   const [sys, setSys] = useState<Sysinfo | null>(null)
   const [hists, setHists] = useState<IfaceHist[]>([])
@@ -55,16 +66,6 @@ export default function RealtimeTraffic() {
   }, [])
 
   useInterval(poll, 2000)
-
-  const Spark = ({ data, color }: { data: number[]; color: string }) => {
-    const max = Math.max(1, ...data)
-    const pts = data.map((v, i) => `${(i / Math.max(1, data.length - 1)) * 200},${40 - (v / max) * 36}`).join(' ')
-    return (
-      <svg viewBox="0 0 200 40" style={{ width: '100%', height: 40 }}>
-        <polyline points={pts} fill="none" stroke={color} strokeWidth={1.6} />
-      </svg>
-    )
-  }
 
   return (
     <div>

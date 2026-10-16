@@ -7,7 +7,6 @@ import { useInterval } from './ui'
 interface MenuItem {
   to: string
   label: string
-  icon: string
 }
 
 interface MenuGroup {
@@ -18,48 +17,48 @@ interface MenuGroup {
 const MENU: MenuGroup[] = [
   {
     label: '',
-    items: [{ to: '/', label: '首页', icon: '🏠' }],
+    items: [{ to: '/', label: '首页' }],
   },
   {
     label: '流量与监控',
     items: [
-      { to: '/traffic', label: '流量统计', icon: '📊' },
-      { to: '/realtime', label: '实时流量', icon: '📡' },
-      { to: '/perf', label: '性能监控', icon: '📈' },
+      { to: '/traffic', label: '流量统计' },
+      { to: '/realtime', label: '实时流量' },
+      { to: '/perf', label: '性能监控' },
     ],
   },
   {
     label: '网络',
     items: [
-      { to: '/interfaces', label: '接口', icon: '🔌' },
-      { to: '/wireless', label: '无线', icon: '📶' },
-      { to: '/dhcp', label: 'DHCP / DNS', icon: '🧭' },
-      { to: '/firewall', label: '防火墙', icon: '🛡️' },
-      { to: '/routes', label: '路由工作流', icon: '🗺️' },
-      { to: '/mwan3', label: '多拨负载均衡', icon: '🔀' },
-      { to: '/diag', label: '网络诊断', icon: '🩺' },
+      { to: '/interfaces', label: '接口' },
+      { to: '/wireless', label: '无线' },
+      { to: '/dhcp', label: 'DHCP / DNS' },
+      { to: '/firewall', label: '防火墙' },
+      { to: '/routes', label: '路由工作流' },
+      { to: '/mwan3', label: '多拨负载均衡' },
+      { to: '/diag', label: '网络诊断' },
     ],
   },
   {
     label: '服务',
     items: [
-      { to: '/services', label: '启动项', icon: '🚀' },
-      { to: '/upnp', label: 'UPnP', icon: '🔗' },
-      { to: '/packages', label: '软件包', icon: '📦' },
+      { to: '/services', label: '启动项' },
+      { to: '/upnp', label: 'UPnP' },
+      { to: '/packages', label: '软件包' },
     ],
   },
   {
     label: '系统',
     items: [
-      { to: '/settings', label: '系统设置', icon: '⚙️' },
-      { to: '/log', label: '系统日志', icon: '📜' },
-      { to: '/processes', label: '进程', icon: '🧵' },
-      { to: '/backup', label: '备份 / 升级', icon: '💾' },
+      { to: '/settings', label: '系统设置' },
+      { to: '/log', label: '系统日志' },
+      { to: '/processes', label: '进程' },
+      { to: '/backup', label: '备份 / 升级' },
     ],
   },
   {
     label: '月月岛',
-    items: [{ to: '/wizard', label: '首次设置向导', icon: '✨' }],
+    items: [{ to: '/wizard', label: '首次设置向导' }],
   },
 ]
 
@@ -116,8 +115,8 @@ function calc(sys: {
 
 export default function Layout() {
   const { personalization, setPersonalization, logout } = useApp()
-  // 默认左侧栏关闭，点左上角 ☰ 展开
-  const [collapsed, setCollapsed] = useState(true)
+  // 默认左侧栏展开，点左上角 ☰ / Ctrl+B 收起
+  const [collapsed, setCollapsed] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [stats, setStats] = useState<MiniStats | null>(null)
   const [fold, setFold] = useState<Record<string, boolean>>(loadFold)
@@ -126,7 +125,8 @@ export default function Layout() {
 
   const toggleFold = (label: string) => {
     setFold((f) => {
-      const next = { ...f, [label]: !f[label] }
+      // 未记录 = 默认折叠，只有用户点击后才展开
+      const next = { ...f, [label]: f[label] === false ? true : false }
       try {
         localStorage.setItem(FOLD_KEY, JSON.stringify(next))
       } catch { /* ignore */ }
@@ -141,20 +141,8 @@ export default function Layout() {
     items: g.items.filter((it) => !kw || it.label.toLowerCase().includes(kw) || it.to.includes(kw)),
   })).filter((g) => g.items.length > 0)
 
-  /* 当前页面所属分组（面包屑 + 自动展开） */
+  /* 当前页面所属分组（面包屑） */
   const curGroup = MENU.find((g) => g.items.some((i) => i.to === loc.pathname))?.label || ''
-  useEffect(() => {
-    if (curGroup && fold[curGroup]) {
-      setFold((f) => {
-        const next = { ...f, [curGroup]: false }
-        try {
-          localStorage.setItem(FOLD_KEY, JSON.stringify(next))
-        } catch { /* ignore */ }
-        return next
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loc.pathname])
 
   /* Ctrl+B 切换侧边栏 */
   useEffect(() => {
@@ -168,7 +156,7 @@ export default function Layout() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const allFolded = MENU.filter((g) => g.label).every((g) => fold[g.label])
+  const allFolded = MENU.filter((g) => g.label).every((g) => fold[g.label] !== false)
   const toggleFoldAll = () => {
     setFold((f) => {
       const next: Record<string, boolean> = {}
@@ -216,7 +204,6 @@ export default function Layout() {
         </div>
         <nav className="yy-nav">
           <div className="yy-nav-search">
-            <span className="ico">🔎</span>
             <input
               className="nav-q"
               placeholder="搜索菜单… (Ctrl+B 收起侧栏)"
@@ -233,7 +220,7 @@ export default function Layout() {
           </div>
           {filteredMenu.length === 0 && <div className="yy-nav-empty muted small">没有匹配的菜单</div>}
           {filteredMenu.map((g, gi) => {
-            const folded = !!fold[g.label] && !kw
+            const folded = !!g.label && !kw && fold[g.label] !== false
             return (
               <div className={`yy-nav-group ${folded ? 'folded' : ''}`} key={gi}>
                 {g.label ? (
@@ -251,7 +238,6 @@ export default function Layout() {
                       className={({ isActive }) => `yy-nav-item ${isActive ? 'active' : ''}`}
                       onClick={() => setNavOpen(false)}
                     >
-                      <span className="icon">{it.icon}</span>
                       {it.label}
                     </NavLink>
                   ))}
@@ -261,8 +247,8 @@ export default function Layout() {
           })}
         </nav>
         <div className="yy-side-foot">
-          <span className="btn small ghost" style={{ cursor: 'pointer' }} onClick={toggleTheme}>
-            {personalization?.theme === 'light' ? '🌙' : '☀️'}
+          <span className="btn small ghost" style={{ cursor: 'pointer' }} onClick={toggleTheme} title="切换深浅主题">
+            {personalization?.theme === 'light' ? '深色' : '浅色'}
           </span>
           <span className="mono">yueyue · v2.1.0</span>
         </div>
@@ -286,7 +272,7 @@ export default function Layout() {
               <span className="pill mono">{stats.clock}</span>
             </div>
           )}
-          <NavLink to="/wizard" className="btn small">✨ 向导</NavLink>
+          <NavLink to="/wizard" className="btn small">向导</NavLink>
           <button className="btn small ghost" onClick={logout}>退出</button>
         </header>
         <main className="yy-content">

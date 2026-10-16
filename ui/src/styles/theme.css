@@ -217,7 +217,6 @@ body {
   background: var(--yy-accent);
   box-shadow: 0 0 10px var(--yy-accent-glow);
 }
-.yy-nav-item .icon { width: 18px; text-align: center; font-size: 15px; }
 
 .yy-side-foot {
   padding: 12px 16px 16px;
@@ -934,7 +933,6 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   );
   box-shadow: 0 8px 28px var(--yy-accent-glow);
 }
-.choice-card .cc-icon { font-size: 28px; line-height: 1; }
 .choice-card .cc-title { font-weight: 800; margin: 10px 0 6px; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
 .choice-card .cc-desc { color: var(--text-2); font-size: 12px; line-height: 1.7; }
 .choice-card .cc-check {
@@ -1175,13 +1173,16 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   background-size: 24px 24px;
   background-position: 8px 8px;
 }
-.wf-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+/* 提升为合成层：拖拽 / 平移 / 缩放时只做合成，不触发整层重绘 */
+.wf-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 .wf-svg { position: absolute; inset: 0; overflow: visible; }
+/* 可见连线不参与命中（含虚线段），点击统一透到下方 16px 命中层，避免虚线相位导致点击被吞 */
 .wf-edge {
   fill: none;
   stroke: color-mix(in srgb, var(--yy-accent) 55%, transparent);
   stroke-width: 2;
   opacity: 0.75;
+  pointer-events: none;
 }
 .wf-edge.flow {
   stroke-dasharray: 7 11;
@@ -1189,6 +1190,22 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
 }
 .wf-edge.down { stroke: var(--text-2); stroke-dasharray: 4 7; opacity: 0.55; }
 @keyframes wf-flow { to { stroke-dashoffset: -18; } }
+
+/* 连线命中区 / 选中态 / 模拟设备连线 / 拖拽改绑 */
+.wf-edge-hit { fill: none; stroke: transparent; stroke-width: 16; cursor: pointer; pointer-events: stroke; }
+.wf-edge.sel { stroke: var(--yy-accent); stroke-width: 3; opacity: 1; filter: drop-shadow(0 0 6px var(--yy-accent-glow)); }
+.wf-edge.sim { opacity: 0.45; stroke-width: 1.5; }
+.wf-edge-hit:hover + .wf-edge { opacity: 1; }
+.wf-rewire { fill: none; stroke: var(--yy-accent); stroke-width: 2; stroke-dasharray: 6 5; pointer-events: none; }
+
+/* 左键快捷框 / 连线信息框 */
+.wf-pop { min-width: 214px; }
+.wf-pop-head { padding: 8px 12px 6px; font-weight: 700; font-size: 12.5px; }
+
+/* 模拟设备节点 */
+.wf-node.wf-sim { border-style: dashed; background: color-mix(in srgb, var(--glass) 88%, transparent); }
+.wf-node.wf-sim .n-name { font-size: 11.5px; }
+.wf-node.wf-sim .n-sub { line-height: 1.25; font-size: 10.5px; }
 
 .wf-node {
   position: absolute;
@@ -1232,7 +1249,6 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   );
 }
 .wf-node .n-head { display: flex; align-items: center; gap: 6px; }
-.wf-node .n-ico { font-size: 14px; }
 .wf-node .n-name {
   font-size: 12.5px;
   font-weight: 700;
@@ -1270,16 +1286,6 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
 }
 .wf-port.left { left: -5px; }
 .wf-port.right { right: -5px; }
-.wf-hint {
-  position: absolute;
-  right: 14px;
-  bottom: 10px;
-  padding: 4px 12px;
-  border-radius: 99px;
-  background: color-mix(in srgb, var(--glass) 85%, transparent);
-  border: 1px solid var(--glass-border);
-  pointer-events: none;
-}
 
 /* 右键菜单 */
 .ctx-menu {

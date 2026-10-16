@@ -30,7 +30,7 @@ export default function LogView() {
         right={
           <div className="row" style={{ gap: 8 }}>
             <button className={`btn small ${auto ? 'primary' : ''}`} onClick={() => setAuto(!auto)}>
-              {auto ? '⏸ 停止自动刷新' : '▶ 自动刷新'}
+              {auto ? '停止自动刷新' : '自动刷新'}
             </button>
             <button className="btn small" onClick={load} disabled={busy}>{busy ? '刷新中…' : '刷新'}</button>
           </div>

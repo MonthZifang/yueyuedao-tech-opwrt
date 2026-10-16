@@ -1,0 +1,13 @@
+#!/bin/sh
+# 月月岛科技 — 旧 LuCI 入口已废弃（前端 v2.1.0 起由 React 控制台取代）
+# 任何 /cgi-bin/luci/* 请求统一 302 跳转到新控制台，防止旧页面残留
+printf 'Status: 302 Found\r\n'
+printf 'Location: /\r\n'
+printf 'Cache-Control: no-store\r\n'
+printf 'Content-Type: text/html; charset=utf-8\r\n'
+printf '\r\n'
+printf '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">'
+printf '<meta http-equiv="refresh" content="0; url=/"><title>月月岛控制台</title></head>'
+printf '<body style="font-family:sans-serif;background:#0f1e33;color:#dfe9f5;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
+printf '<p>旧版管理页面已下线，正在前往 <a style="color:#7cc4ff" href="/">月月岛控制台</a>…</p></body></html>\n'
+exit 0

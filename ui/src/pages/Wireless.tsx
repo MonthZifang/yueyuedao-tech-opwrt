@@ -96,7 +96,7 @@ export default function Wireless() {
         title="无线网络"
         right={
           <div className="row" style={{ gap: 8 }}>
-            <button className="btn small" onClick={scan}>{scanning ? '扫描中…' : '🔍 扫描周边'}</button>
+            <button className="btn small" onClick={scan}>{scanning ? '扫描中…' : '扫描周边'}</button>
             <button className="btn small" onClick={load}>刷新</button>
           </div>
         }
@@ -107,7 +107,7 @@ export default function Wireless() {
           radios.map(([radio, r]) => (
             <div key={radio}>
               <div className="row mt8">
-                <span style={{ fontWeight: 800 }}>📻 {radio}</span>
+                <span style={{ fontWeight: 800 }}> {radio}</span>
                 <Badge kind="mute">{(r as any).channel ? `CH ${(r as any).channel}` : ''}</Badge>
                 {(r as any).up ? <Badge kind="ok">已启用</Badge> : <Badge kind="danger">已关闭</Badge>}
                 <span className="muted small">{(r as any).band || ''} {(r as any).country || ''}</span>

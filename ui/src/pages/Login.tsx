@@ -93,7 +93,7 @@ export default function Login({ onDone }: { onDone: () => void }) {
                 }}
                 title={showPw ? '隐藏密码' : '显示密码'}
               >
-                {showPw ? '🙈' : '👁️'}
+                {showPw ? '隐藏' : '显示'}
               </span>
             </div>
           </label>

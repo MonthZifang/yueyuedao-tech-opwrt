@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Stat, Progress, LineChart, Empty, useAsync, useInterval, Legend } from '../components/ui'
+import { Card, Stat, Progress, LineChart, Empty, useAsync, useInterval, Legend, Icon } from '../components/ui'
 import { api } from '../lib/api'
 import { fmtBytes, fmtUptime, fmtMonth, pct, fmtRate } from '../lib/format'
 
@@ -113,7 +113,7 @@ export default function Dashboard() {
         <Card title="性能趋势（最近 2 小时）" right={<button className="btn small" onClick={() => navigate('/perf')}>详细</button>}>
           {cpuSeries.length > 2 ? (
             <>
-              <div className="row" style={{ justifyContent: 'space-between' }}>
+              <div className="row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
                 <Legend items={[{ label: 'CPU %', color: 'var(--yy-accent)' }, { label: '内存 %', color: 'var(--warn)' }]} />
               </div>
               <LineChart
@@ -142,15 +142,16 @@ export default function Dashboard() {
       {/* 快捷入口 */}
       <div className="grid c4 mt16">
         {[
-          { to: '/routes', t: '路由工作流', d: '画布 / 静态路由 / 右键配置' },
-          { to: '/realtime', t: '实时流量', d: '各网卡速率' },
-          { to: '/diag', t: '网络诊断', d: 'ping / 路由追踪' },
-          { to: '/settings', t: '个性化', d: '背景 / 主题 / 配色' },
+          { to: '/routes', t: '路由工作流', d: '画布 / 静态路由 / 右键配置', icon: 'route' },
+          { to: '/realtime', t: '实时流量', d: '各网卡速率', icon: 'activity' },
+          { to: '/diag', t: '网络诊断', d: 'ping / 路由追踪', icon: 'gauge' },
+          { to: '/settings', t: '个性化', d: '背景 / 主题 / 配色', icon: 'sliders' },
         ].map((q) => (
-          <div key={q.to} className="card hoverable row" style={{ cursor: 'pointer', gap: 12 }} onClick={() => navigate(q.to)}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{q.t}</div>
-              <div className="muted small">{q.d}</div>
+          <div key={q.to} className="card hoverable quick-card" onClick={() => navigate(q.to)}>
+            <div className="qc-ico"><Icon name={q.icon} size={22} /></div>
+            <div className="qc-text">
+              <div className="qc-title">{q.t}</div>
+              <div className="qc-desc">{q.d}</div>
             </div>
           </div>
         ))}

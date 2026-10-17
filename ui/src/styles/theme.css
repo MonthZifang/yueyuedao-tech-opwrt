@@ -27,7 +27,7 @@
   --glass-border: rgba(127, 231, 210, 0.14);
   --text-0: #eaf7f3;
   --text-1: rgba(234, 247, 243, 0.72);
-  --text-2: rgba(234, 247, 243, 0.45);
+  --text-2: rgba(234, 247, 243, 0.55);
   --danger: #ff7b72;
   --warn: #ffd166;
   --ok: #7fe7d2;
@@ -52,7 +52,7 @@
   --glass-border: rgba(31, 90, 80, 0.14);
   --text-0: #12312b;
   --text-1: rgba(18, 49, 43, 0.72);
-  --text-2: rgba(18, 49, 43, 0.45);
+  --text-2: rgba(18, 49, 43, 0.58);
   --shadow: 0 12px 40px rgba(31, 90, 80, 0.14);
   --shadow-sm: 0 4px 16px rgba(31, 90, 80, 0.1);
 }
@@ -323,6 +323,35 @@ body {
   border-color: color-mix(in srgb, var(--yy-accent) 40%, transparent);
   transform: translateY(-2px);
 }
+
+/* 快捷入口卡片：图标牌 + 文字，提升可识别性与呼吸感 */
+.quick-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  cursor: pointer;
+  padding: 16px 18px;
+}
+.quick-card .qc-ico {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--yy-accent);
+  background: var(--yy-accent-dim);
+  border: 1px solid color-mix(in srgb, var(--yy-accent) 22%, transparent);
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.quick-card:hover .qc-ico {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px var(--yy-accent-glow);
+}
+.quick-card .qc-text { min-width: 0; }
+.quick-card .qc-title { font-weight: 700; font-size: 13.5px; letter-spacing: 0.3px; }
+.quick-card .qc-desc { color: var(--text-2); font-size: 11.5px; margin-top: 3px; line-height: 1.5; }
 .card-title {
   font-size: 12.5px;
   font-weight: 800;

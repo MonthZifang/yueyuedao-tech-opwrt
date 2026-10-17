@@ -83,6 +83,50 @@ export function Progress({ value }: { value: number }) {
   )
 }
 
+/* ---------------- 线性图标（无 emoji；currentColor 描边） ---------------- */
+const ICON_PATHS: Record<string, React.ReactNode> = {
+  route: (
+    <>
+      <circle cx="5" cy="6" r="2.2" />
+      <circle cx="19" cy="6" r="2.2" />
+      <circle cx="12" cy="18" r="2.2" />
+      <path d="M6.6 7.7 10.4 16M17.4 7.7 13.6 16M7.2 6h9.6" />
+    </>
+  ),
+  activity: <path d="M22 12h-4l-3 8L9 4l-3 8H2" />,
+  gauge: (
+    <>
+      <path d="m12 14 4-4" />
+      <path d="M3.3 18a9 9 0 1 1 17.4 0" />
+    </>
+  ),
+  sliders: (
+    <>
+      <path d="M4 21v-6M4 11V3M12 21v-8M12 9V3M20 21v-4M20 13V3" />
+      <path d="M1 15h6M9 9h6M17 17h6" />
+    </>
+  ),
+}
+
+export function Icon({ name, size = 20, className }: { name: string; size?: number; className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {ICON_PATHS[name] ?? null}
+    </svg>
+  )
+}
+
 export function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className={`switch ${on ? 'on' : ''}`} onClick={() => onChange(!on)}>

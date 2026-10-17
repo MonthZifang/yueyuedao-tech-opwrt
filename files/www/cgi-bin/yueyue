@@ -621,6 +621,29 @@ local function reload_network()
 end
 
 function act.wizard_status()
+	-- 回读向导已存配置（nets_json / wifi_json），供重进向导预填与摘要展示
+	local nets, aps, main, guest
+	local okn, n = pcall(jsonc.parse, ucicursor:get("yueyue", "wizard", "nets_json") or "")
+	if okn and type(n) == "table" then nets = n end
+	local okw, w = pcall(jsonc.parse, ucicursor:get("yueyue", "wizard", "wifi_json") or "")
+	if okw and type(w) == "table" then
+		-- 回读归一化："0"/"1" → boolean，前端与断言统一消费
+		local function b(v) return (v == true or v == "1" or v == 1) end
+		if type(w.aps) == "table" then
+			for _, a in ipairs(w.aps) do
+				if type(a) == "table" then
+					a.enabled = (a.enabled == nil) and true or b(a.enabled)
+					a.follow = (a.follow == nil) and true or b(a.follow)
+					a.hidden = b(a.hidden)
+					a.isolate = b(a.isolate)
+					if type(a.guest) == "table" then a.guest.enabled = b(a.guest.enabled) end
+				end
+			end
+		end
+		aps = w.aps
+		main = w.main
+		guest = w.guest
+	end
 	reply({
 		ok = true,
 		done = ucicursor:get("yueyue", "wizard", "done") == "1",
@@ -629,6 +652,12 @@ function act.wizard_status()
 		wan_proto = ucicursor:get("network", "wan", "proto") or "dhcp",
 		uplink = ucicursor:get("network", "wwan", "proto") and true or false,
 		main_router = ucicursor:get("yueyue", "wizard", "main_router") ~= "0",
+		mode = ucicursor:get("yueyue", "wizard", "mode") or "",
+		allow_lan = ucicursor:get("yueyue", "wizard", "allow_lan") == "1",
+		nets = nets or false,
+		aps = aps or false,
+		main = main or false,
+		guest = guest or false,
 		version = distro_version(),
 	})
 end
@@ -694,6 +723,124 @@ function act.wizard_uplink()
 	reply({ ok = true, mode = "wisp", radio = radio, device = dev, ssid = ssid })
 end
 
+------------------------------------------------------------
+-- 向导网络/无线配置（任务 20：AP 统一 / AP IP 分离 / 访客网络 / 分网段 WiFi）
+------------------------------------------------------------
+
+-- 幂等：确保接口存在并配静态地址
+local function ensure_iface(net, ipaddr)
+	ucicursor:set("network", net, "interface")
+	ucicursor:set("network", net, "proto", "static")
+	ucicursor:set("network", net, "ipaddr", ipaddr)
+	ucicursor:set("network", net, "netmask", "255.255.255.0")
+end
+
+-- 幂等：确保 dhcp 池（找到同 interface 的旧池则复用）
+local function ensure_dhcp(net, opts)
+	opts = opts or {}
+	for dname, ds in pairs(ucicursor:get_all("dhcp") or {}) do
+		if ds[".type"] == "dhcp" and (ds.interface or "") == net then
+			ucicursor:set("dhcp", dname, "start", tostring(opts.start or 100))
+			ucicursor:set("dhcp", dname, "limit", tostring(opts.limit or 150))
+			ucicursor:set("dhcp", dname, "leasetime", opts.leasetime or "12h")
+			return dname
+		end
+	end
+	local h = ucicursor:add("dhcp", "dhcp")
+	ucicursor:set("dhcp", h, "interface", net)
+	ucicursor:set("dhcp", h, "start", tostring(opts.start or 100))
+	ucicursor:set("dhcp", h, "limit", tostring(opts.limit or 150))
+	ucicursor:set("dhcp", h, "leasetime", opts.leasetime or "12h")
+	return h
+end
+
+-- 幂等：确保防火墙 zone（名字相同则复用，只建一条到 wan 的 forwarding）
+local function firewall_ensure_zone(name, net)
+	local zid
+	for zn, zs in pairs(ucicursor:get_all("firewall") or {}) do
+		if zs[".type"] == "zone" and (zs.name or "") == name then zid = zn break end
+	end
+	if not zid then zid = ucicursor:add("firewall", "zone") end
+	ucicursor:set("firewall", zid, "name", name)
+	ucicursor:set_list("firewall", zid, "network", { net })
+	ucicursor:set("firewall", zid, "input", "accept")
+	ucicursor:set("firewall", zid, "output", "accept")
+	ucicursor:set("firewall", zid, "forward", "reject")
+	local has = false
+	for fn, fs in pairs(ucicursor:get_all("firewall") or {}) do
+		if fs[".type"] == "forwarding" and (fs.src or "") == name and (fs.dest or "") == "wan" then has = true end
+	end
+	if not has then
+		local fwd = ucicursor:add("firewall", "forwarding")
+		ucicursor:set("firewall", fwd, "src", name)
+		ucicursor:set("firewall", fwd, "dest", "wan")
+	end
+end
+
+-- 访客网络：共享隔离网段 lan_guest（只上外网，互访隔离由 wifi isolate 保证）
+local GUEST_NET = "lan_guest"
+local GUEST_IP = "192.168.30.1"
+local function ensure_guest_net()
+	ensure_iface(GUEST_NET, GUEST_IP)
+	ensure_dhcp(GUEST_NET, { start = 100, limit = 150 })
+	firewall_ensure_zone("guest", GUEST_NET)
+end
+
+-- 网段互访：成对建立 forwarding（idempotent：先清干净向导网段间的旧转发，再按需重建）
+local function firewall_sync_interlan(nets, allow)
+	local set = {}
+	for _, n in ipairs(nets) do set[n] = true end
+	for k, f in pairs(ucicursor:get_all("firewall") or {}) do
+		if f[".type"] == "forwarding" and set[f.src or ""] and set[f.dest or ""] then
+			ucicursor:delete("firewall", k)
+		end
+	end
+	if allow then
+		for i = 1, #nets do
+			for j = i + 1, #nets do
+				for _, pair in ipairs({ { nets[i], nets[j] }, { nets[j], nets[i] } }) do
+					local fwd = ucicursor:add("firewall", "forwarding")
+					ucicursor:set("firewall", fwd, "src", pair[1])
+					ucicursor:set("firewall", fwd, "dest", pair[2])
+				end
+			end
+		end
+	end
+end
+
+-- 清理向导创建过的网段（不在 keep 集合里的；连带 dhcp 池 / 防火墙 zone / 网段间转发）
+local function cleanup_wizard_nets(keep)
+	local prev = ucicursor:get("yueyue", "wizard", "nets") or ""
+	for net in prev:gmatch("[^,]+") do
+		if net ~= "" and not keep[net] then
+			ucicursor:delete("network", net)
+			for dname, ds in pairs(ucicursor:get_all("dhcp") or {}) do
+				if ds[".type"] == "dhcp" and (ds.interface or "") == net then ucicursor:delete("dhcp", dname) end
+			end
+			for zn, zs in pairs(ucicursor:get_all("firewall") or {}) do
+				if zs[".type"] == "zone" and (zs.name or "") == net then ucicursor:delete("firewall", zn) end
+				if zs[".type"] == "forwarding" and ((zs.src or "") == net or (zs.dest or "") == net) then
+					ucicursor:delete("firewall", zn)
+				end
+			end
+		end
+	end
+end
+
+-- 关闭访客网络时连带清理接口 / dhcp 池 / 防火墙 zone
+local function drop_guest_net()
+	ucicursor:delete("network", GUEST_NET)
+	for dname, ds in pairs(ucicursor:get_all("dhcp") or {}) do
+		if ds[".type"] == "dhcp" and (ds.interface or "") == GUEST_NET then ucicursor:delete("dhcp", dname) end
+	end
+	for zn, zs in pairs(ucicursor:get_all("firewall") or {}) do
+		if zs[".type"] == "zone" and (zs.name or "") == "guest" then ucicursor:delete("firewall", zn) end
+		if zs[".type"] == "forwarding" and ((zs.src or "") == "guest" or (zs.dest or "") == "guest") then
+			ucicursor:delete("firewall", zn)
+		end
+	end
+end
+
 function act.wizard_mode()
 	need_root()
 	local mode = tostring(arg("mode") or "simple")
@@ -714,8 +861,26 @@ function act.wizard_mode()
 		exec("/etc/init.d/dnsmasq reload >/dev/null 2>&1")
 	end
 
-	if mode == "simple" then
-		reply({ ok = true, mode = "simple" })
+	local want_guest = (arg("guest") == "1" or arg("guest") == "true")
+
+	-- 标准路由 / AP 统一网络：单网段（lan 保持 192.168.21.1），可选访客网络
+	if mode == "simple" or mode == "ap_unified" then
+		local keep = { lan = true }
+		if want_guest then
+			ensure_guest_net()
+			keep[GUEST_NET] = true
+		else
+			drop_guest_net()
+		end
+		cleanup_wizard_nets(keep)
+		ucicursor:set("yueyue", "wizard", "mode", mode)
+		ucicursor:set("yueyue", "wizard", "nets", "lan")
+		ucicursor:commit("yueyue")
+		ucicursor:commit("network")
+		ucicursor:commit("dhcp")
+		ucicursor:commit("firewall")
+		reload_network()
+		reply({ ok = true, mode = mode, guest = want_guest })
 		return
 	end
 
@@ -750,54 +915,275 @@ function act.wizard_mode()
 			ucicursor:set("wireless", "yueyue_mesh", "encryption", "none")
 		end
 		if best then ucicursor:set("wireless", radio, "channel", best) end
+
+		local keep = { lan = true }
+		if want_guest then
+			ensure_guest_net()
+			keep[GUEST_NET] = true
+		else
+			drop_guest_net()
+		end
+		cleanup_wizard_nets(keep)
+		ucicursor:set("yueyue", "wizard", "mode", mode)
+		ucicursor:set("yueyue", "wizard", "nets", "lan")
+		ucicursor:commit("yueyue")
 		ucicursor:commit("wireless")
+		ucicursor:commit("network")
+		ucicursor:commit("dhcp")
+		ucicursor:commit("firewall")
 		reload_network()
-		reply({ ok = true, mode = "mesh", mesh_id = mesh_id, channel = best })
+		reply({ ok = true, mode = "mesh", mesh_id = mesh_id, channel = best, guest = want_guest })
 		return
 	end
 
+	-- AP IP 分离：每个网段独立子网 + DHCP + 防火墙 zone；逐网段可开访客
 	if mode == "vlan" then
-		local count = math.max(2, math.min(4, argn("count", 3)))
-		local names, keys = {}, {}
-		for i = 1, count do
-			names[i] = tostring(arg("name" .. i) or ("yueyue-" .. (21 + i)))
-			keys[i] = tostring(arg("key" .. i) or ("opwrt" .. (21 + i)))
+		local nets = {}
+		if body and type(body.nets) == "table" then
+			for _, n in ipairs(body.nets) do
+				if type(n) == "table" then nets[#nets + 1] = n end
+			end
+		end
+		if #nets == 0 then
+			-- 兼容旧参数 count/name{i}
+			local count = math.max(2, math.min(6, argn("count", 3)))
+			for i = 1, count do
+				nets[#nets + 1] = {
+					name = tostring(arg("name" .. i) or ("yueyue-" .. (21 + i))),
+					octet = 21 + i,
+					ssid = tostring(arg("name" .. i) or ("yueyue-" .. (21 + i))),
+					key = tostring(arg("key" .. i) or ("opwrt" .. (21 + i))),
+					guest = false,
+				}
+			end
 		end
 
-		local radio = ucicursor:get("wireless", "@wifi-iface[0]", "device") or "radio0"
-		for i = 1, count do
-			local net = "lan" .. (21 + i)
-			ucicursor:set("network", net, "interface")
-			ucicursor:set("network", net, "proto", "static")
-			ucicursor:set("network", net, "ipaddr", "192.168." .. (21 + i) .. ".1")
-			ucicursor:set("network", net, "netmask", "255.255.255.0")
-
-			local h = ucicursor:add("dhcp", "dhcp")
-			ucicursor:set("dhcp", h, "interface", net)
-			ucicursor:set("dhcp", h, "start", "100")
-			ucicursor:set("dhcp", h, "limit", "150")
-			ucicursor:set("dhcp", h, "leasetime", "12h")
-
-			local w = ucicursor:add("wireless", "wifi-iface")
-			ucicursor:set("wireless", w, "device", radio)
-			ucicursor:set("wireless", w, "mode", "ap")
-			ucicursor:set("wireless", w, "network", net)
-			ucicursor:set("wireless", w, "ssid", names[i])
-			ucicursor:set("wireless", w, "encryption", "psk2+ccmp")
-			ucicursor:set("wireless", w, "key", keys[i])
-
-			firewall_new_zone(net, net)
+		local allow_lan = (arg("allow_lan") == "1" or arg("allow_lan") == "true")
+		local keep = { lan = true }
+		local used = {}
+		local created = {}
+		for i, n in ipairs(nets) do
+			local oct = tonumber(n.octet) or (21 + i)
+			if oct < 2 or oct > 254 or oct == 21 or oct == 30 or used[oct] then oct = 21 + i end
+			if oct == 21 or oct == 30 or used[oct] then oct = 40 + i end
+			used[oct] = true
+			local net = "lan" .. tostring(oct)
+			local dstart = math.max(2, math.min(240, tonumber(n.dhcp_start) or 100))
+			local dlimit = math.max(10, math.min(253 - dstart, tonumber(n.dhcp_limit) or 150))
+			ensure_iface(net, "192.168." .. tostring(oct) .. ".1")
+			ensure_dhcp(net, { start = dstart, limit = dlimit })
+			firewall_ensure_zone(net, net)
+			keep[net] = true
+			created[#created + 1] = {
+				net = net,
+				octet = oct,
+				name = tostring(n.name or net),
+				ssid = tostring(n.ssid or n.name or net),
+				key = tostring(n.key or ""),
+				hidden = (n.hidden == true or n.hidden == "1" or n.hidden == 1) and true or false,
+				guest = (n.guest == true or n.guest == "1" or n.guest == 1) and true or false,
+				guest_ssid = tostring(n.guest_ssid or ""),
+				guest_key = tostring(n.guest_key or ""),
+				dhcp_start = dstart,
+				dhcp_limit = dlimit,
+			}
+			if created[#created].guest then
+				ensure_guest_net()
+				keep[GUEST_NET] = true
+			end
 		end
+		cleanup_wizard_nets(keep)
+
+		local list = {}
+		for _, c in ipairs(created) do list[#list + 1] = c.net end
+		firewall_sync_interlan(list, allow_lan)
+		ucicursor:set("yueyue", "wizard", "mode", "vlan")
+		ucicursor:set("yueyue", "wizard", "nets", table.concat(list, ","))
+		ucicursor:set("yueyue", "wizard", "allow_lan", allow_lan and "1" or "0")
+		ucicursor:set("yueyue", "wizard", "nets_json", jsonc.stringify(created))
+		ucicursor:commit("yueyue")
 		ucicursor:commit("network")
 		ucicursor:commit("dhcp")
-		ucicursor:commit("wireless")
 		ucicursor:commit("firewall")
 		reload_network()
-		reply({ ok = true, mode = "vlan", count = count })
+		reply({ ok = true, mode = "vlan", nets = created, allow_lan = allow_lan })
 		return
 	end
 
 	fail("未知模式")
+end
+
+-- 无线配置（向导 WiFi 步骤下发；幂等）
+-- 载荷两种：
+--   1) aps 数组（逐 AP 精细配置）：{name, radio, enabled, net, follow, ssid, key, hidden,
+--        isolate, channel, width, power, guest={enabled,ssid,key}}
+--      follow=1 时 SSID/密码/隐藏跟随上级（vlan 模式=绑定网段设置，其余=统一设置）
+--   2) 兼容旧载荷（无 aps）：按 radio 轮询分配 main/guest/nets
+function act.wizard_wifi()
+	need_root()
+	local mode = tostring(arg("mode") or ucicursor:get("yueyue", "wizard", "mode") or "simple")
+	local main = (body and type(body.main) == "table") and body.main or {}
+	local guest = (body and type(body.guest) == "table") and body.guest or {}
+	local nets = {}
+	if body and type(body.nets) == "table" then
+		for _, n in ipairs(body.nets) do
+			if type(n) == "table" then nets[#nets + 1] = n end
+		end
+	end
+	local aps = {}
+	if body and type(body.aps) == "table" then
+		for _, a in ipairs(body.aps) do
+			if type(a) == "table" then aps[#aps + 1] = a end
+		end
+	end
+
+	local radios = wifi_devs()
+	if #radios == 0 then radios = { "radio0" } end
+
+	-- 清掉向导此前生成的无线接口（不含 uplink/mesh 命名）
+	for wname, ws in pairs(ucicursor:get_all("wireless") or {}) do
+		if type(wname) == "string" and (wname:match("^yueyue_wifi_") or wname:match("^yueyue_guest_")) then
+			ucicursor:delete("wireless", wname)
+		end
+	end
+
+	local function truthy(v) return (v == true or v == "1" or v == 1) end
+
+	local function net_by_name(net)
+		for _, n in ipairs(nets) do
+			if tostring(n.net or "") == tostring(net) then return n end
+		end
+		return nil
+	end
+
+	-- 射频参数：信道 / 带宽 / 发射功率（只写显式给的值）
+	local function apply_radio_rf(radio, ch, width, power)
+		if ch and ch ~= "" and ch ~= "auto" then
+			ucicursor:set("wireless", radio, "channel", tostring(ch))
+		end
+		if width and width ~= "" and width ~= "auto" then
+			local ht = ({ ["20"] = "HT20", ["40"] = "HT40", ["80"] = "VHT80", ["160"] = "VHT160" })[tostring(width)]
+			if ht then ucicursor:set("wireless", radio, "htmode", ht) end
+		end
+		if power and power ~= "" and power ~= "auto" then
+			ucicursor:set("wireless", radio, "txpower", tostring(power))
+		end
+	end
+
+	local function apply_iface(id, radio, net, ssid, key, hidden, isolate)
+		ucicursor:set("wireless", id, "wifi-iface")
+		ucicursor:set("wireless", id, "device", radio)
+		ucicursor:set("wireless", id, "mode", "ap")
+		ucicursor:set("wireless", id, "network", net)
+		ucicursor:set("wireless", id, "ssid", tostring(ssid or "yueyue-opwrt"))
+		if truthy(hidden) then ucicursor:set("wireless", id, "hidden", "1")
+		else ucicursor:delete("wireless", id, "hidden") end
+		if truthy(isolate) then ucicursor:set("wireless", id, "isolate", "1")
+		else ucicursor:delete("wireless", id, "isolate") end
+		if key and #tostring(key) >= 8 then
+			ucicursor:set("wireless", id, "encryption", "psk2+ccmp")
+			ucicursor:set("wireless", id, "key", tostring(key))
+		else
+			ucicursor:set("wireless", id, "encryption", "none")
+			ucicursor:delete("wireless", id, "key")
+		end
+	end
+
+	local function apply_guest_iface(id, radio, ssid, key)
+		ensure_guest_net()
+		ucicursor:set("wireless", id, "wifi-iface")
+		ucicursor:set("wireless", id, "device", radio)
+		ucicursor:set("wireless", id, "mode", "ap")
+		ucicursor:set("wireless", id, "network", GUEST_NET)
+		ucicursor:set("wireless", id, "ssid", tostring(ssid or "Guest"))
+		ucicursor:set("wireless", id, "isolate", "1")
+		if key and #tostring(key) >= 8 then
+			ucicursor:set("wireless", id, "encryption", "psk2+ccmp")
+			ucicursor:set("wireless", id, "key", tostring(key))
+		else
+			ucicursor:set("wireless", id, "encryption", "none")
+			ucicursor:delete("wireless", id, "key")
+		end
+	end
+
+	local applied = {}
+	if #aps > 0 then
+		-- ===== 逐 AP 精细配置 =====
+		for i, a in ipairs(aps) do
+			if a.enabled == nil or truthy(a.enabled) then
+				local radio = tostring(a.radio or radios[((i - 1) % #radios) + 1])
+				local follow = not (a.follow == false or a.follow == "0" or a.follow == 0)
+				local net, nref = "lan", nil
+				if mode == "vlan" then
+					nref = net_by_name(a.net)
+					if not nref and #nets > 0 then nref = nets[((i - 1) % #nets) + 1] end
+					net = nref and tostring(nref.net) or tostring(a.net or ("lan" .. tostring(21 + i)))
+				end
+				local ssid, key, hidden
+				if follow then
+					if nref then ssid, key, hidden = nref.ssid, nref.key, nref.hidden
+					else ssid, key, hidden = main.ssid, main.key, main.hidden end
+				else
+					ssid, key, hidden = a.ssid, a.key, a.hidden
+				end
+				ssid = tostring(ssid or "yueyue-opwrt")
+				apply_iface("yueyue_wifi_" .. i, radio, net, ssid, key, hidden, a.isolate)
+				apply_radio_rf(radio, a.channel, a.width, a.power)
+
+				local g = (type(a.guest) == "table") and a.guest or {}
+				local one = {
+					name = tostring(a.name or ("AP" .. i)), radio = radio, net = net,
+					ssid = ssid, hidden = truthy(hidden), isolate = truthy(a.isolate),
+					channel = tostring(a.channel or "auto"), width = tostring(a.width or "auto"),
+					power = tostring(a.power or "auto"), follow = follow,
+				}
+				if truthy(g.enabled) then
+					local gs = tostring(g.ssid or (ssid .. "-Guest"))
+					apply_guest_iface("yueyue_guest_" .. i, radio, gs, g.key)
+					one.guest_ssid = gs
+				end
+				applied[#applied + 1] = one
+			end
+		end
+	else
+		-- ===== 兼容旧载荷：按 radio 轮询 =====
+		for ri, radio in ipairs(radios) do
+			local net, ssid, key, hidden = "lan", main.ssid, main.key, main.hidden
+			local net_guest = truthy(guest.enabled)
+			local g_ssid, g_key = guest.ssid, guest.key
+			if mode == "vlan" and #nets > 0 then
+				local n = nets[((ri - 1) % #nets) + 1]
+				net = tostring(n.net or ("lan" .. tostring(tonumber(n.octet) or (21 + ri))))
+				ssid = n.ssid or ssid
+				key = n.key or key
+				hidden = n.hidden or hidden
+				net_guest = truthy(n.guest)
+				g_ssid = n.guest_ssid or g_ssid
+				g_key = n.guest_key or g_key
+			end
+			ssid = tostring(ssid or "yueyue-opwrt")
+			apply_iface("yueyue_wifi_" .. radio, radio, net, ssid, key, hidden, nil)
+			local one = { radio = radio, net = net, ssid = ssid, hidden = truthy(hidden) }
+			if net_guest then
+				local gs = tostring(g_ssid or (ssid .. "-Guest"))
+				apply_guest_iface("yueyue_guest_" .. radio, radio, gs, g_key)
+				one.guest_ssid = gs
+			end
+			applied[#applied + 1] = one
+		end
+	end
+
+	ucicursor:commit("wireless")
+	ucicursor:commit("network")
+	ucicursor:commit("dhcp")
+	ucicursor:commit("firewall")
+	-- 存回读快照（重进向导预填 / 摘要展示）
+	ucicursor:set("yueyue", "wizard", "wifi_json", jsonc.stringify({
+		mode = mode, main = main, guest = guest, nets = nets, aps = aps,
+	}))
+	ucicursor:commit("yueyue")
+	exec("wifi reload >/dev/null 2>&1")
+	reply({ ok = true, mode = mode, applied = applied, radios = radios })
 end
 
 function act.wizard_password()

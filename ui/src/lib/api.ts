@@ -64,12 +64,18 @@ export const api = {
 
   // 向导
   wizardStatus: () =>
-    call<{ done: boolean; hostname: string; lan_ip: string; wan_proto: string; uplink: boolean; version: string; main_router?: boolean }>('wizard_status'),
+    call<{
+      done: boolean; hostname: string; lan_ip: string; wan_proto: string; uplink: boolean;
+      version: string; main_router?: boolean; mode?: string; allow_lan?: boolean;
+      nets?: any[] | false; aps?: any[] | false; main?: any; guest?: any;
+    }>('wizard_status'),
   wizardScan: () => call<{ aps: WifiAp[]; devices: string[] }>('wizard_scan'),
   wizardUplink: (params: Record<string, unknown>) =>
     call<{ ok: boolean; msg?: string }>('wizard_uplink', { body: params }),
   wizardMode: (params: Record<string, unknown>) =>
     call<{ ok: boolean; msg?: string }>('wizard_mode', { body: params }),
+  wizardWifi: (params: Record<string, unknown>) =>
+    call<{ ok: boolean; msg?: string }>('wizard_wifi', { body: params }),
   wizardPassword: (password: string) => call<{ ok: boolean }>('wizard_password', { body: { password } }),
   wizardFinish: () => call<{ ok: boolean }>('wizard_finish'),
 

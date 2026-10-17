@@ -73,8 +73,9 @@ export default function Dashboard() {
 
       {/* 系统状态 */}
       <div className="grid c4 mt16">
-        <Card>
+        <Card className="tone-cpu">
           <Stat
+            icon="cpu"
             label="CPU 负载"
             value={s ? `${Math.round(((s.cpu.total - s.cpu.idle - s.cpu.iowait) / Math.max(1, s.cpu.total)) * 100)}%` : '—'}
             sub={s ? `负载 ${s.load?.[0]?.toFixed(2) ?? '—'} / ${s.load?.[1]?.toFixed(2) ?? '—'} / ${s.load?.[2]?.toFixed(2) ?? '—'}` : ''}
@@ -83,8 +84,9 @@ export default function Dashboard() {
             <Progress value={s ? pct(s.cpu.total - s.cpu.idle - s.cpu.iowait, s.cpu.total) : 0} />
           </div>
         </Card>
-        <Card>
+        <Card className="tone-mem">
           <Stat
+            icon="layers"
             label="内存"
             value={s && s.mem?.MemTotal ? `${pct(s.mem.MemTotal - (s.mem.MemAvailable || 0), s.mem.MemTotal)}%` : '—'}
             sub={s?.mem ? `${fmtBytes(s.mem.MemTotal - (s.mem.MemAvailable || 0))} / ${fmtBytes(s.mem.MemTotal)}` : ''}
@@ -93,11 +95,12 @@ export default function Dashboard() {
             <Progress value={s?.mem?.MemTotal ? pct(s.mem.MemTotal - (s.mem.MemAvailable || 0), s.mem.MemTotal) : 0} />
           </div>
         </Card>
-        <Card>
-          <Stat label="运行时间" value={s ? fmtUptime(s.uptime) : '—'} sub={s?.version} />
+        <Card className="tone-up">
+          <Stat icon="clock" label="运行时间" value={s ? fmtUptime(s.uptime) : '—'} sub={s?.version} />
         </Card>
-        <Card>
+        <Card className="tone-conn">
           <Stat
+            icon="zap"
             label="活动连接 / 磁盘"
             value={s ? s.conn : '—'}
             sub={s?.disk ? `磁盘 ${fmtBytes(s.disk.used)} / ${fmtBytes(s.disk.total)}` : ''}

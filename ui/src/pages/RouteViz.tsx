@@ -124,8 +124,10 @@ function PKV({ k, v }: { k: string; v: React.ReactNode }) {
 }
 
 function PSec({ title, children }: { title: string; children: React.ReactNode }) {
+  // 上下游分组自动着色：上游=主色 / 下游=暖色，强化拓扑方向（不侵入各面板 JSX）
+  const tone = title.includes('上游') ? ' up' : title.includes('下游') ? ' down' : ''
   return (
-    <div className="prop-sec">
+    <div className={`prop-sec${tone}`}>
       <h4>{title}</h4>
       {children}
     </div>

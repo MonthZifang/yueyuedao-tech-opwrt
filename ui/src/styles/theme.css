@@ -406,6 +406,26 @@ body {
 .stat .value .unit { font-size: 12px; font-weight: 500; color: var(--text-1); margin-left: 4px; font-family: var(--font-ui); }
 .stat .sub { font-size: 11.5px; color: var(--text-1); }
 
+/* 首页 stat 卡差异化：图标牌 + 逐卡色调（进度条同步） */
+.card.tone-cpu  { --tone: #7fe7d2; }
+.card.tone-mem  { --tone: #6fc6e8; }
+.card.tone-up   { --tone: #a89bf0; }
+.card.tone-conn { --tone: #ffd166; }
+.stat .stat-ico {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--tone, var(--yy-accent)) 16%, transparent);
+  color: var(--tone, var(--yy-accent));
+}
+.stat .label { gap: 8px; }
+.card[class*='tone-'] .progress > i {
+  background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 55%, #fff));
+}
+
 /* ============================================================
    表格
    ============================================================ */
@@ -437,6 +457,28 @@ table.yy tr:last-child td { border-bottom: none; }
 table.yy tbody tr { transition: background var(--dur) var(--ease); }
 table.yy tr:hover td { background: color-mix(in srgb, var(--yy-accent) 6%, transparent); }
 table.yy tr.clickable { cursor: pointer; }
+
+/* 表格统一 refinement：表头吸顶 + 数字列右对齐 + 排序提示 */
+table.yy thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--glass-strong) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+table.yy th.num, table.yy td.num { text-align: right; }
+table.yy td.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+table.yy th.sortable::after {
+  content: '\21C5';
+  opacity: 0.35;
+  margin-left: 4px;
+  font-size: 9px;
+}
+table.yy th.sortable:hover::after { opacity: 0.8; }
 
 /* ============================================================
    按钮 / 输入 / 选择
@@ -1452,14 +1494,29 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   padding-bottom: 8px;
   border-bottom: 1px solid var(--glass-border);
 }
-.prop-sec { margin-top: 12px; }
+.prop-sec { margin-top: 14px; }
 .prop-sec h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   letter-spacing: 2px;
   color: var(--text-2);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font-weight: 700;
 }
+.prop-sec h4::before {
+  content: '';
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--text-2);
+  opacity: 0.55;
+}
+.prop-sec.up h4::before { background: var(--yy-accent); opacity: 0.95; }
+.prop-sec.down h4::before { background: var(--warn); opacity: 0.9; }
+.prop-sec.up h4 { color: color-mix(in srgb, var(--yy-accent) 70%, var(--text-1)); }
+.prop-sec.down h4 { color: color-mix(in srgb, var(--warn) 65%, var(--text-1)); }
 .prop-row {
   display: flex;
   justify-content: space-between;

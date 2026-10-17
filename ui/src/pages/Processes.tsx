@@ -21,18 +21,18 @@ export default function Processes() {
           <table className="yy">
             <thead>
               <tr>
-                <th>PID</th><th>用户</th><th>状态</th><th>内存</th><th>内存 %</th><th>CPU %</th><th>命令</th>
+                <th className="num">PID</th><th>用户</th><th>状态</th><th className="num">内存</th><th className="num">内存 %</th><th className="num">CPU %</th><th>命令</th>
               </tr>
             </thead>
             <tbody>
               {(proc.data?.processes || []).map((p) => (
                 <tr key={p.pid}>
-                  <td className="mono">{p.pid}</td>
+                  <td className="num mono">{p.pid}</td>
                   <td>{p.user}</td>
                   <td><Badge kind="mute">{p.stat}</Badge></td>
-                  <td>{fmtBytes(p.vsz * 1024)}</td>
-                  <td>{p.mem_pct}%</td>
-                  <td style={{ fontWeight: p.cpu_pct > 50 ? 700 : 400 }}>{p.cpu_pct}%</td>
+                  <td className="num">{fmtBytes(p.vsz * 1024)}</td>
+                  <td className="num">{p.mem_pct}%</td>
+                  <td className="num" style={{ fontWeight: p.cpu_pct > 50 ? 700 : 400 }}>{p.cpu_pct}%</td>
                   <td className="mono" style={{ maxWidth: 480, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.cmd}</td>
                 </tr>
               ))}

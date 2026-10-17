@@ -50,15 +50,19 @@ export function Card({ title, right, children, style, className }: {
   )
 }
 
-export function Stat({ label, value, unit, sub }: {
+export function Stat({ label, value, unit, sub, icon }: {
   label: string
   value: React.ReactNode
   unit?: string
   sub?: React.ReactNode
+  icon?: string
 }) {
   return (
     <div className="stat">
-      <div className="label">{label}</div>
+      <div className="label">
+        {icon && <span className="stat-ico"><Icon name={icon} size={15} /></span>}
+        {label}
+      </div>
       <div className="value">
         {value}
         {unit && <span className="unit">{unit}</span>}
@@ -120,6 +124,26 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
       <path d="M6.2 6.2A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 3.4-.6" />
     </>
   ),
+  cpu: (
+    <>
+      <rect x="7" y="7" width="10" height="10" rx="1" />
+      <path d="M10 2v3M14 2v3M10 19v3M14 19v3M2 10h3M2 14h3M19 10h3M19 14h3" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+      <path d="M2 12l10 5 10-5" />
+      <path d="M2 17l10 5 10-5" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+  zap: <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />,
 }
 
 export function Icon({ name, size = 20, className }: { name: string; size?: number; className?: string }) {

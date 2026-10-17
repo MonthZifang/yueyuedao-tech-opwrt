@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { login } from '../lib/ubus'
 import { api } from '../lib/api'
-import { useToast } from '../components/ui'
+import { useToast, Icon } from '../components/ui'
 import { useNavigate } from 'react-router-dom'
 
 export default function Login({ onDone }: { onDone: () => void }) {
@@ -88,12 +88,15 @@ export default function Login({ onDone }: { onDone: () => void }) {
               <span
                 onClick={() => setShowPw((v) => !v)}
                 style={{
-                  position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)',
-                  cursor: 'pointer', fontSize: 14, opacity: 0.65, userSelect: 'none',
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  cursor: 'pointer', opacity: 0.7, userSelect: 'none', display: 'inline-flex',
+                  color: 'var(--text-1)',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
                 title={showPw ? '隐藏密码' : '显示密码'}
               >
-                {showPw ? '隐藏' : '显示'}
+                <Icon name={showPw ? 'eye-off' : 'eye'} size={18} />
               </span>
             </div>
           </label>

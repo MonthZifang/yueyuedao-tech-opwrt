@@ -473,7 +473,11 @@ table.yy tr.clickable { cursor: pointer; }
 .btn.primary:hover { box-shadow: 0 6px 22px var(--yy-accent-glow); }
 .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
 .btn.danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
-.btn.ghost { background: transparent; border-color: color-mix(in srgb, var(--text-2) 45%, transparent); }
+.btn.ghost {
+  background: color-mix(in srgb, var(--text-0) 5%, transparent);
+  border-color: color-mix(in srgb, var(--text-2) 62%, transparent);
+  color: var(--text-1);
+}
 .btn.small { padding: 6px 13px; font-size: 12px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
@@ -882,7 +886,7 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
 /* 步骤条 v2 */
 .wz-steps {
   display: flex;
-  margin: 30px 0 10px;
+  margin: 30px 0 22px;
 }
 .wz-step {
   flex: 1;
@@ -953,7 +957,7 @@ input[type='radio'], input[type='checkbox'] { accent-color: var(--yy-accent); }
   from { opacity: 0; transform: translateX(18px); }
   to { opacity: 1; transform: none; }
 }
-.wz-pane h2 { margin: 6px 0 10px; font-size: 21px; letter-spacing: 1px; }
+.wz-pane h2 { margin: 8px 0 16px; font-size: 21px; letter-spacing: 1px; }
 .wz-pane h3 { margin: 4px 0 14px; font-size: 17px; letter-spacing: 0.5px; }
 .wz-pane p { line-height: 1.95; }
 

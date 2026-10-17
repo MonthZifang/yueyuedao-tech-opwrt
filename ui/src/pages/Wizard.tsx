@@ -705,14 +705,14 @@ export default function Wizard() {
           {step === 3 && (
             <div>
               <h3>WiFi 设置</h3>
-              <div className="muted small" style={{ marginBottom: 12 }}>
+              <div className="muted small" style={{ marginBottom: 12, lineHeight: 1.8 }}>
                 {netMode === 'vlan'
                   ? '已开启 AP IP 分离：先为每个网段设置 WiFi 名称、密码与访客模式，再逐 AP 绑定网段与射频参数。'
                   : netMode === 'ap_unified'
                     ? 'AP 全部同网：默认所有 AP 广播同一套 WiFi；每个 AP 可切换为独立设置，并单独调整信道 / 带宽 / 发射功率 / 客户端隔离 / 访客模式。'
                     : netMode === 'mesh'
-                      ? 'Mesh 组网：主 WiFi 在所有节点广播（回程自动协商），可逐 AP 微调射频参数。'
-                      : '标准路由：设置唯一的内网 WiFi，可逐 AP 微调。'}
+                      ? 'Mesh 组网：主 WiFi 在所有节点广播（回程自动协商）。'
+                      : '标准路由：设置唯一的内网 WiFi。'}
                 {uplinkMode === 'wisp' && ' 当前为 WISP 无线中继，2.4G 射频可能同时承担上联，速率会受影响。'}
               </div>
 
@@ -749,7 +749,7 @@ export default function Wizard() {
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 8 }}>逐网段设置</div>
                   {vlanNets.map((n, i) => (
-                    <div className="card mt8" key={i} style={{ padding: '16px 18px' }}>
+                    <div className="card mt12" key={i} style={{ padding: '18px 20px' }}>
                       <div className="row">
                         <div style={{ fontWeight: 700 }}>
                           {n.name} <span className="muted small mono">192.168.{n.octet}.0/24</span>
@@ -790,6 +790,8 @@ export default function Wizard() {
                 </div>
               )}
 
+              {netMode !== 'simple' && netMode !== 'mesh' && (
+              <>
               <div className="row mt24">
                 <div style={{ fontWeight: 700 }}>逐 AP 设置（{apCfgs.length} 个）</div>
                 <span className="grow" />
@@ -798,7 +800,7 @@ export default function Wizard() {
               </div>
               {apCfgs.length === 0 && <Empty text="暂无 AP，点击右上角添加" />}
               {apCfgs.map((a, i) => (
-                <div className="card mt12" key={i} data-testid={`ap-card-${i}`} style={{ padding: '16px 18px', opacity: a.enabled ? 1 : 0.55 }}>
+                <div className="card mt16" key={i} data-testid={`ap-card-${i}`} style={{ padding: '18px 20px', opacity: a.enabled ? 1 : 0.55 }}>
                   <div className="row">
                     <input className="input" data-testid={`ap-name-${i}`} style={{ width: 160, fontWeight: 700 }} value={a.name}
                       onChange={(e) => setAp(i, { name: e.target.value })} placeholder={`AP-${i + 1}`} />
@@ -853,7 +855,7 @@ export default function Wizard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="muted small mt8">
+                    <div className="muted small" style={{ marginTop: 10, lineHeight: 1.7 }}>
                       当前跟随：{netMode === 'vlan'
                         ? (() => { const n = vlanNets.find((x) => `lan${x.octet}` === a.net) || vlanNets[0]; return n ? `${n.ssid} / ${n.key ? '已设密码' : '开放'}` : '—' })()
                         : `${mainSsid} / ${mainKey ? '已设密码' : '开放'}`}
@@ -870,23 +872,29 @@ export default function Wizard() {
                     </div>
                   )}
 
-                  <div className="row mt8">
+                  <div className="row mt10">
                     <span className="muted small">该 AP 广播访客 WiFi</span>
                     <span data-testid={`ap-guest-${i}`}><Switch on={a.guestOn} onChange={(v) => setAp(i, { guestOn: v })} /></span>
-                    {a.guestOn && (
-                      <>
-                        <input className="input" style={{ width: 200 }} data-testid={`ap-guestssid-${i}`} value={a.guestSsid}
-                          onChange={(e) => setAp(i, { guestSsid: e.target.value })} placeholder="访客 WiFi 名称" />
-                        <input className="input" style={{ width: 200 }} data-testid={`ap-guestkey-${i}`} type="password" value={a.guestKey}
-                          onChange={(e) => setAp(i, { guestKey: e.target.value })} placeholder="访客密码（≥8 位或留空）" />
-                      </>
-                    )}
                   </div>
                   {a.guestOn && (
-                    <div className="muted small mt8">访客走隔离网段 192.168.30.0/24，仅可上外网，访客之间也不互通。</div>
+                    <div className="mt10" style={{ paddingLeft: 12, borderLeft: '2px solid var(--glass-border)' }}>
+                      <div className="grid c2">
+                        <Field label="访客 WiFi 名称">
+                          <input className="input" data-testid={`ap-guestssid-${i}`} value={a.guestSsid}
+                            onChange={(e) => setAp(i, { guestSsid: e.target.value })} placeholder="访客 WiFi 名称" />
+                        </Field>
+                        <Field label="访客密码（至少 8 位，留空为开放）">
+                          <input className="input" data-testid={`ap-guestkey-${i}`} type="password" value={a.guestKey}
+                            onChange={(e) => setAp(i, { guestKey: e.target.value })} />
+                        </Field>
+                      </div>
+                      <div className="muted small mt8" style={{ lineHeight: 1.7 }}>访客走隔离网段 192.168.30.0/24，仅可上外网，访客之间也不互通。</div>
+                    </div>
                   )}
                 </div>
               ))}
+              </>
+              )}
             </div>
           )}
 

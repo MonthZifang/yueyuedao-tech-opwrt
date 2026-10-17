@@ -653,6 +653,11 @@ function act.wizard_uplink()
 	local enc = tostring(arg("encryption") or "psk2+ccmp")
 
 	if action == "wired" then
+		-- board.json 只声明 lan，wan 节可能不存在；uci 对不存在的节 set 会静默失败
+		if not ucicursor:get("network", "wan") then
+			ucicursor:set("network", "wan", "interface")
+		end
+		ucicursor:set("network", "wan", "device", tostring(arg("device") or "eth1"))
 		ucicursor:set("network", "wan", "proto", "dhcp")
 		ucicursor:delete("network", "wwan")
 		ucicursor:commit("network")
@@ -799,7 +804,7 @@ function act.wizard_password()
 	need_root()
 	local pw = arg("password")
 	if not pw or #tostring(pw) < 4 then fail("密码至少 4 位") end
-	if tostring(pw):find("[^%g%s]") then fail("密码包含非法字符") end
+	if tostring(pw):find("%c") then fail("密码包含非法字符") end
 	local ok = sys.user.setpasswd("root", pw)
 	reply({ ok = ok and true or false })
 end

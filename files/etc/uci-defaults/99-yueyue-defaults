@@ -39,5 +39,12 @@ chmod 755 /www/cgi-bin/yueyue /etc/init.d/yueyue-monitor 2>/dev/null
 /etc/init.d/yueyue-monitor enable
 /etc/init.d/yueyue-monitor start
 
+# WAN 口默认 eth1 DHCP（board.json 只声明 lan，这里补齐，保证首启 WAN 可用）
+if ! uci -q get network.wan >/dev/null; then
+  uci -q set network.wan=interface
+  uci -q set network.wan.device='eth1'
+  uci -q set network.wan.proto='dhcp'
+fi
+
 uci commit
 exit 0

@@ -49,6 +49,21 @@ export function useApp() {
   return useContext(AppCtx)
 }
 
+// 内置插画：支持 WebP 的浏览器换用 bg.webp（体积约为 jpg 一半），其余回落 bg.jpg；
+// 个性化里保存/展示的仍是 bg.jpg 路径，仅在套用到背景层时做运行时替换。
+const BUILTIN_BG_JPG = '/luci-static/yueyue/assets/bg.jpg'
+const SUPPORTS_WEBP = (() => {
+  try {
+    return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0
+  } catch {
+    return false
+  }
+})()
+
+function resolveBgUrl(u: string) {
+  return u === BUILTIN_BG_JPG && SUPPORTS_WEBP ? '/luci-static/yueyue/assets/bg.webp' : u
+}
+
 const DEFAULT_PERS: Personalization = {
   bg_mode: 'builtin',
   bg_file: '',
@@ -69,7 +84,7 @@ function applyPersonalization(p: Personalization) {
   r.style.setProperty('--yy-blur', `${p.blur ?? 14}px`)
   r.style.setProperty('--yy-radius', `${p.radius ?? 18}px`)
   if (p.bg_url) {
-    r.style.setProperty('--yy-bg-image', `url('${p.bg_url}')`)
+    r.style.setProperty('--yy-bg-image', `url('${resolveBgUrl(p.bg_url)}')`)
   }
 }
 
